@@ -1,164 +1,139 @@
-# market/binance.py
-
 import requests
-from datetime import datetime
+import pandas as pd
 
 
-SPOT_API = "https://api.binance.com/api/v3"
-FUTURES_API = "https://fapi.binance.com/fapi/v1"
-
-
-def normalize_symbol(symbol):
-    """
-    تحويل BTC/USDT إلى BTCUSDT
-    """
-    return symbol.replace("/", "").upper()
+SPOT_URL = "https://api.binance.com/api/v3"
+FUTURES_URL = "https://fapi.binance.com/fapi/v1"
 
 
 
-def get_price(symbol="BTC/USDT"):
-    """
-    جلب سعر Spot من Binance
-    """
+def normalize(symbol):
+
+    symbol = symbol.upper()
+    symbol = symbol.replace("/", "")
+
+    if not symbol.endswith("USDT"):
+        symbol += "USDT"
+
+    return symbol
+
+
+
+def get_price(symbol="BTCUSDT"):
+
     try:
-        symbol = normalize_symbol(symbol)
 
-        url = f"{SPOT_API}/ticker/price"
+        symbol = normalize(symbol)
 
-        response = requests.get(
-            url,
+        r = requests.get(
+            f"{SPOT_URL}/ticker/price",
             params={
                 "symbol": symbol
             },
             timeout=10
         )
 
-        data = response.json()
+        return float(
+            r.json()["price"]
+        )
 
-        return float(data["price"])
+    except:
 
-    except Exception as e:
-        print("get_price error:", e)
         return None
 
 
 
-def get_futures_price(symbol="BTC/USDT"):
-    """
-    جلب سعر Futures من Binance
-    """
+def get_futures_price(symbol="BTCUSDT"):
+
     try:
-        symbol = normalize_symbol(symbol)
 
-        url = f"{FUTURES_API}/ticker/price"
+        symbol = normalize(symbol)
 
-        response = requests.get(
-            url,
+        r=requests.get(
+            f"{FUTURES_URL}/ticker/price",
             params={
-                "symbol": symbol
+                "symbol":symbol
             },
             timeout=10
         )
 
-        data = response.json()
+        return float(
+            r.json()["price"]
+        )
 
-        return float(data["price"])
+    except:
 
-    except Exception as e:
-        print("get_futures_price error:", e)
         return None
-
-
-
-def get_market_status(symbol="BTC/USDT"):
-    """
-    حالة السوق
-    """
-    price = get_price(symbol)
-
-    if price is None:
-        return {
-            "status": "offline",
-            "symbol": symbol
-        }
-
-
-    return {
-        "status": "online",
-        "exchange": "Binance",
-        "market": "Spot",
-        "symbol": symbol,
-        "price": price,
-        "time": datetime.utcnow().isoformat()
-    }
-
-
-
-def market_status(symbol="BTC/USDT"):
-    """
-    توافق مع النسخ القديمة
-    """
-    return get_market_status(symbol)
 
 
 
 def get_market_data(
-    symbol="BTC/USDT",
-    timeframe="1h",
-    limit=50
+        symbol="BTCUSDT",
+        interval="1h",
+        limit=200
 ):
-    """
-    جلب الشموع
-    """
+
     try:
-        symbol = normalize_symbol(symbol)
 
-        url = f"{SPOT_API}/klines"
+        symbol=normalize(symbol)
 
-        response = requests.get(
-            url,
+        r=requests.get(
+
+            f"{SPOT_URL}/klines",
+
             params={
-                "symbol": symbol,
-                "interval": timeframe,
-                "limit": limit
+
+                "symbol":symbol,
+                "interval":interval,
+                "limit":limit
+
             },
+
             timeout=10
         )
 
-        return response.json()
+
+        data=r.json()
 
 
-    except Exception as e:
-        print("get_market_data error:", e)
-        return []
+        df=pd.DataFrame(
 
+            data,
 
+            columns=[
 
-def get_spot_and_futures(symbol="BTC/USDT"):
-    """
-    مقارنة Spot و Futures
-    """
+                "time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+                "q",
+                "trades",
+                "buy",
+                "buy_q",
+                "ignore"
 
-    return {
-        "symbol": symbol,
-        "spot": get_price(symbol),
-        "futures": get_futures_price(symbol)
-    }
+            ]
 
-
-
-def check_connection():
-    """
-    اختبار اتصال Binance
-    """
-    try:
-
-        response = requests.get(
-            f"{SPOT_API}/ping",
-            timeout=5
         )
 
-        return response.status_code == 200
+
+        for c in [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume"
+        ]:
+
+            df[c]=df[c].astype(float)
+
+
+        return df
+
 
     except:
-        return False
+
+        return pd.DataFrame()
