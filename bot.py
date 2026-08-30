@@ -407,9 +407,19 @@ def main():
         "Trading Doshka AI Started"
     )
 
+from notifications.alerts import alert_loop
+import asyncio
+
+    async def start_alerts():
+
+    asyncio.create_task(
+        alert_loop(app.bot)
+    )
 
 
-    app.run_polling()
+app.run_polling(
+    post_init=start_alerts
+)
 
 
 
