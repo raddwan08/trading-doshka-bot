@@ -174,7 +174,6 @@ async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         PriceActionAnalyzer(df),
         SMCAnalyzer(df),
         WyckoffAnalyzer(df),
-        ElliottWaveAnalyzer(df),
         IchimokuAnalyzer(df),
         FibonacciAnalyzer(df)
     ]
@@ -337,9 +336,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 1. Price Action
 2. SMC
 3. Wyckoff
-4. Elliott Wave
-5. Ichimoku
-6. Fibonacci
+4. Ichimoku
+5. Fibonacci
 
 <b>للدفع:</b>
 USDT (TRC20) أو BTC أو ETH
