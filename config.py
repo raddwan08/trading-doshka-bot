@@ -1,13 +1,23 @@
+# config.py
+
 import os
-
-# ضع توكن البوت هنا أو في Railway Variables
-BOT_TOKEN = os.getenv("BOT_TOKEN", "PUT_YOUR_BOT_TOKEN_HERE")
-
-# قاعدة البيانات
-DATABASE = "users.db"
+from dataclasses import dataclass
 
 
-# العملات المتاحة
+# Telegram
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+
+
+# Database
+DB_NAME = "trading_bot.db"
+
+
+# Binance
+BINANCE_API = "https://api.binance.com"
+
+
+# العملات التي يراقبها النظام
 COINS = [
     "BTC",
     "ETH",
@@ -19,39 +29,98 @@ COINS = [
 ]
 
 
-# المدارس التحليلية
+# الفواصل الزمنية
+TIMEFRAMES = [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "1d"
+]
+
+
+@dataclass
+class Plan:
+    name: str
+    price: float
+    spot: bool
+    futures: bool
+    alerts: bool
+
+
+# الاشتراكات
+PLANS = {
+
+    "free": Plan(
+        name="تجريبي",
+        price=0,
+        spot=False,
+        futures=False,
+        alerts=False
+    ),
+
+    "pro": Plan(
+        name="PRO Spot",
+        price=20,
+        spot=True,
+        futures=False,
+        alerts=True
+    ),
+
+    "elite": Plan(
+        name="ELITE Futures",
+        price=50,
+        spot=True,
+        futures=True,
+        alerts=True
+    )
+}
+
+
+# المدارس
 SCHOOLS = {
-    "classic": {
-        "name": "📈 التحليل الكلاسيكي",
-        "description": "EMA + RSI + MACD + اتجاه السوق"
+
+    "wyckoff": {
+        "name": "وايكوف",
+        "emoji": "📊"
     },
 
     "elliott": {
-        "name": "🌊 موجات إليوت",
-        "description": "تحليل الموجات والقمم والقيعان"
-    },
-
-    "wyckoff": {
-        "name": "📊 وايكوف",
-        "description": "تجميع وتوزيع وحركة الحجم"
+        "name": "إليوت",
+        "emoji": "🌊"
     },
 
     "harmonic": {
-        "name": "🦋 هارمونيك",
-        "description": "نماذج XABCD ونسب فيبوناتشي"
+        "name": "هارمونيك",
+        "emoji": "🦋"
+    },
+
+    "classic": {
+        "name": "كلاسيكي",
+        "emoji": "📈"
     },
 
     "whales": {
-        "name": "🐋 الحيتان",
-        "description": "كشف الشموع ذات الحجم الكبير"
-    },
-
-    "liquidity": {
-        "name": "🔒 السيولة",
-        "description": "مناطق ضغط الشراء والبيع"
+        "name": "الحيتان",
+        "emoji": "🐋"
     }
 }
 
 
-# مدة التجربة
-FREE_DAYS = 7
+# إعدادات التنبيهات
+
+ALERT_INTERVAL = 60
+
+
+# العملات التي تتم مراقبتها للعقود
+
+FUTURES_SYMBOLS = [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT"
+]
+
+
+# حدود تنبيه الحيتان
+
+WHALE_VOLUME_MULTIPLIER = 3
