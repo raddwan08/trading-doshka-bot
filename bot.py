@@ -12,7 +12,12 @@ from telegram.ext import (
 )
 
 from config import BOT_TOKEN
-from market.binance import get_price, get_market_status
+from market.binance import (
+    get_price,
+    get_market_data,
+    get_signal,
+    get_futures_price
+)
 from database import add_user, is_subscriber
 from chart import create_chart
 
