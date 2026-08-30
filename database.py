@@ -1,96 +1,252 @@
+# database.py
+
 import sqlite3
+import asyncio
 from datetime import datetime, timedelta
 
-from config import DATABASE, FREE_DAYS
+from config import DB_NAME, PLANS
 
 
 class Database:
 
     def __init__(self):
-        self.conn = sqlite3.connect(
-            DATABASE,
-            check_same_thread=False
-        )
-
-        self.create()
+        self.lock = asyncio.Lock()
 
 
-    def create(self):
+    async def init(self):
 
-        cur = self.conn.cursor()
+        async with self.lock:
 
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS users(
-            id INTEGER PRIMARY KEY,
-            username TEXT,
-            expire TEXT
-        )
-        """)
+            con = sqlite3.connect(DB_NAME)
+            cur = con.cursor()
 
-        self.conn.commit()
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS users(
+                id INTEGER PRIMARY KEY,
+                username TEXT,
+                plan TEXT DEFAULT 'free',
+                spot INTEGER DEFAULT 0,
+                futures INTEGER DEFAULT 0,
+                alerts INTEGER DEFAULT 0,
+                expire TEXT
+            )
+            """)
 
 
-    def add_user(self, user_id, username):
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS alerts(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                message TEXT,
+                created TEXT
+            )
+            """)
 
-        cur = self.conn.cursor()
 
-        cur.execute(
-            "SELECT id FROM users WHERE id=?",
-            (user_id,)
-        )
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS signals(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT,
+                market TEXT,
+                action TEXT,
+                price REAL,
+                created TEXT
+            )
+            """)
 
-        if not cur.fetchone():
 
-            expire = (
-                datetime.utcnow()
-                +
-                timedelta(days=FREE_DAYS)
-            ).isoformat()
+            con.commit()
+            con.close()
+
+
+
+    async def add_user(self,user_id,username):
+
+        async with self.lock:
+
+            con=sqlite3.connect(DB_NAME)
+            cur=con.cursor()
 
             cur.execute(
-                """
-                INSERT INTO users
-                VALUES(?,?,?)
-                """,
-                (
-                    user_id,
-                    username,
-                    expire
-                )
+            """
+            INSERT OR IGNORE INTO users(id,username)
+            VALUES(?,?)
+            """,
+            (user_id,username)
             )
 
-            self.conn.commit()
+            con.commit()
+            con.close()
 
 
 
-    def active(self,user_id):
+    async def get_user(self,user_id):
 
-        cur=self.conn.cursor()
+        con=sqlite3.connect(DB_NAME)
+        cur=con.cursor()
 
         cur.execute(
-            "SELECT expire FROM users WHERE id=?",
-            (user_id,)
+        "SELECT * FROM users WHERE id=?",
+        (user_id,)
         )
 
         row=cur.fetchone()
 
-        if not row:
+        con.close()
+
+        return row
+
+
+
+    async def activate_plan(self,user_id,plan):
+
+        days=30
+
+        expire=datetime.utcnow()+timedelta(days=days)
+
+        p=PLANS[plan]
+
+
+        async with self.lock:
+
+            con=sqlite3.connect(DB_NAME)
+            cur=con.cursor()
+
+
+            cur.execute(
+            """
+            UPDATE users
+            SET plan=?,
+            spot=?,
+            futures=?,
+            alerts=?,
+            expire=?
+            WHERE id=?
+            """,
+            (
+                plan,
+                int(p.spot),
+                int(p.futures),
+                int(p.alerts),
+                expire.isoformat(),
+                user_id
+            )
+            )
+
+
+            con.commit()
+            con.close()
+
+
+
+    async def has_spot(self,user_id):
+
+        user=await self.get_user(user_id)
+
+        if not user:
             return False
 
-
-        return datetime.utcnow() < datetime.fromisoformat(row[0])
-
+        return bool(user[3])
 
 
-    def status(self,user_id):
 
-        cur=self.conn.cursor()
+    async def has_futures(self,user_id):
+
+        user=await self.get_user(user_id)
+
+        if not user:
+            return False
+
+        return bool(user[4])
+
+
+
+    async def can_receive_alerts(self,user_id):
+
+        user=await self.get_user(user_id)
+
+        if not user:
+            return False
+
+        return bool(user[5])
+
+
+
+    async def all_alert_users(self):
+
+        con=sqlite3.connect(DB_NAME)
+        cur=con.cursor()
+
 
         cur.execute(
-            "SELECT expire FROM users WHERE id=?",
-            (user_id,)
+        """
+        SELECT id FROM users
+        WHERE alerts=1
+        """
         )
 
-        row=cur.fetchone()
+        rows=cur.fetchall()
 
-        return row[0] if row else None
+        con.close()
+
+        return [x[0] for x in rows]
+
+
+
+    async def save_alert(self,user_id,message):
+
+        async with self.lock:
+
+            con=sqlite3.connect(DB_NAME)
+            cur=con.cursor()
+
+
+            cur.execute(
+            """
+            INSERT INTO alerts
+            (user_id,message,created)
+            VALUES(?,?,?)
+            """,
+            (
+                user_id,
+                message,
+                datetime.utcnow().isoformat()
+            )
+            )
+
+
+            con.commit()
+            con.close()
+
+
+
+    async def save_signal(
+        self,
+        symbol,
+        market,
+        action,
+        price
+    ):
+
+        con=sqlite3.connect(DB_NAME)
+        cur=con.cursor()
+
+
+        cur.execute(
+        """
+        INSERT INTO signals
+        (symbol,market,action,price,created)
+        VALUES(?,?,?,?,?)
+        """,
+        (
+            symbol,
+            market,
+            action,
+            price,
+            datetime.utcnow().isoformat()
+        )
+        )
+
+
+        con.commit()
+        con.close()
