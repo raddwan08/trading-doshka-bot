@@ -1,124 +1,79 @@
-import aiohttp
-import time
+
+import ccxt
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("BINANCE_API_KEY")
+SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
 
 
-BINANCE_API = "https://api.binance.com"
+exchange = ccxt.binance({
+    "apiKey": API_KEY,
+    "secret": SECRET_KEY,
+    "enableRateLimit": True,
+})
 
 
-async def get_price(symbol: str):
-    """
-    جلب السعر الحالي للعملة
-    مثال:
-    BTCUSDT
-    ETHUSDT
-    """
-
-    symbol = symbol.upper()
-
-    url = f"{BINANCE_API}/api/v3/ticker/price"
-
-    params = {
-        "symbol": symbol
-    }
-
+def get_price(symbol="BTC/USDT"):
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url,
-                params=params,
-                timeout=10
-            ) as response:
-
-                data = await response.json()
-
-                if "price" in data:
-                    return float(data["price"])
-
-                return None
-
+        ticker = exchange.fetch_ticker(symbol)
+        return ticker["last"]
     except Exception as e:
-        print("BINANCE PRICE ERROR:", e)
         return None
 
 
-
-async def get_candles(
-    symbol="BTCUSDT",
-    interval="1h",
-    limit=100
-):
-    """
-    جلب الشموع للتحليل الفني
-    """
-
-    url = f"{BINANCE_API}/api/v3/klines"
-
-    params = {
-        "symbol": symbol.upper(),
-        "interval": interval,
-        "limit": limit
-    }
-
-
+def get_spot_balance(asset="USDT"):
     try:
-
-        async with aiohttp.ClientSession() as session:
-
-            async with session.get(
-                url,
-                params=params,
-                timeout=10
-            ) as response:
-
-                data = await response.json()
+        balance = exchange.fetch_balance()
+        return balance["free"].get(asset, 0)
+    except Exception:
+        return 0
 
 
-                candles = []
+def get_market_data(symbol="BTC/USDT", timeframe="1h", limit=100):
+    try:
+        candles = exchange.fetch_ohlcv(
+            symbol,
+            timeframe=timeframe,
+            limit=limit
+        )
 
+        return candles
 
-                for candle in data:
-
-                    candles.append(
-                        {
-                            "time": candle[0],
-                            "open": float(candle[1]),
-                            "high": float(candle[2]),
-                            "low": float(candle[3]),
-                            "close": float(candle[4]),
-                            "volume": float(candle[5])
-                        }
-                    )
-
-
-                return candles
-
-
-    except Exception as e:
-
-        print("BINANCE CANDLE ERROR:", e)
+    except Exception:
         return []
 
 
+def get_signal(symbol="BTC/USDT"):
 
-async def market_status(symbol):
+    price = get_price(symbol)
 
-    """
-    حالة السوق
-    """
-
-    price = await get_price(symbol)
-
-    if not price:
+    if price is None:
         return {
-            "status": "error",
-            "message": "لا يوجد بيانات"
+            "signal": "ERROR",
+            "price": None
         }
 
-
     return {
-
-        "symbol": symbol.upper(),
+        "symbol": symbol,
         "price": price,
-        "time": int(time.time())
-
+        "signal": "WATCH"
     }
+
+
+def get_futures_price(symbol="BTC/USDT"):
+    try:
+        futures = ccxt.binance({
+            "options": {
+                "defaultType": "future"
+            }
+        })
+
+        ticker = futures.fetch_ticker(symbol)
+
+        return ticker["last"]
+
+    except Exception:
+        return None
