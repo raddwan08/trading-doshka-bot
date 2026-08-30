@@ -77,3 +77,24 @@ def get_futures_price(symbol="BTC/USDT"):
 
     except Exception:
         return None
+        def get_market_status(symbol="BTC/USDT"):
+    try:
+        price = get_price(symbol)
+
+        if price:
+            return {
+                "status": "OPEN",
+                "symbol": symbol,
+                "price": price
+            }
+
+        return {
+            "status": "ERROR",
+            "symbol": symbol
+        }
+
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "message": str(e)
+        }
