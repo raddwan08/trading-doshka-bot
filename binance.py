@@ -1,69 +1,65 @@
-# binance.py
 
 import aiohttp
 import time
 
-from config import BINANCE_API
+
+BINANCE_API = "https://api.binance.com"
+
+
+async def get_price(symbol: str):
+    """
+    جلب السعر الحالي للعملة
+    مثال:
+    BTCUSDT
+    ETHUSDT
+    """
+
+    symbol = symbol.upper()
+
+    url = f"{BINANCE_API}/api/v3/ticker/price"
+
+    params = {
+        "symbol": symbol
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url,
+                params=params,
+                timeout=10
+            ) as response:
+
+                data = await response.json()
+
+                if "price" in data:
+                    return float(data["price"])
+
+                return None
+
+    except Exception as e:
+        print("BINANCE PRICE ERROR:", e)
+        return None
 
 
 
-# ==========================
-# جلب شموع Spot
-# ==========================
-
-async def get_spot_klines(
-        symbol,
-        timeframe="1h",
-        limit=200
+async def get_candles(
+    symbol="BTCUSDT",
+    interval="1h",
+    limit=100
 ):
+    """
+    جلب الشموع للتحليل الفني
+    """
 
-    symbol = symbol.upper()+"USDT"
+    url = f"{BINANCE_API}/api/v3/klines"
 
+    params = {
+        "symbol": symbol.upper(),
+        "interval": interval,
+        "limit": limit
+    }
 
-    url = (
-        f"{BINANCE_API}/api/v3/klines"
-        f"?symbol={symbol}"
-        f"&interval={timeframe}"
-        f"&limit={limit}"
-    )
-
-
-    return await fetch_klines(url)
-
-
-
-# ==========================
-# جلب شموع Futures
-# ==========================
-
-async def get_futures_klines(
-        symbol,
-        timeframe="1h",
-        limit=200
-):
-
-
-    symbol=symbol.upper()+"USDT"
-
-
-    url=(
-        "https://fapi.binance.com/fapi/v1/klines"
-        f"?symbol={symbol}"
-        f"&interval={timeframe}"
-        f"&limit={limit}"
-    )
-
-
-    return await fetch_klines(url)
-
-
-
-
-# ==========================
-# المعالجة العامة
-# ==========================
-
-async def fetch_klines(url):
 
     try:
 
@@ -71,101 +67,59 @@ async def fetch_klines(url):
 
             async with session.get(
                 url,
-                timeout=15
+                params=params,
+                timeout=10
             ) as response:
 
-
-                data=await response.json()
-
+                data = await response.json()
 
 
-                if not isinstance(data,list):
-
-                    return []
+                candles = []
 
 
+                for candle in data:
 
-                candles=[]
-
-
-
-                for x in data:
-
-
-                    candles.append({
-
-                        "time":
-                        x[0],
-
-
-                        "open":
-                        float(x[1]),
-
-
-                        "high":
-                        float(x[2]),
-
-
-                        "low":
-                        float(x[3]),
-
-
-                        "close":
-                        float(x[4]),
-
-
-                        "volume":
-                        float(x[5])
-
-                    })
-
+                    candles.append(
+                        {
+                            "time": candle[0],
+                            "open": float(candle[1]),
+                            "high": float(candle[2]),
+                            "low": float(candle[3]),
+                            "close": float(candle[4]),
+                            "volume": float(candle[5])
+                        }
+                    )
 
 
                 return candles
 
 
-
     except Exception as e:
 
-        print(
-            "Binance Error:",
-            e
-        )
-
+        print("BINANCE CANDLE ERROR:", e)
         return []
 
 
 
+async def market_status(symbol):
 
-# ==========================
-# السعر الحالي
-# ==========================
+    """
+    حالة السوق
+    """
 
-async def current_price(symbol):
+    price = await get_price(symbol)
 
-
-    symbol=symbol.upper()+"USDT"
-
-
-    url=(
-        f"{BINANCE_API}/api/v3/ticker/price"
-        f"?symbol={symbol}"
-    )
+    if not price:
+        return {
+            "status": "error",
+            "message": "لا يوجد بيانات"
+        }
 
 
-    try:
+    return {
 
-        async with aiohttp.ClientSession() as session:
+        "symbol": symbol.upper(),
+        "price": price,
+        "time": int(time.time())
 
-            async with session.get(url) as r:
-
-                data=await r.json()
-
-                return float(
-                    data["price"]
-                )
-
-
-    except:
-
-        return None
+    }
