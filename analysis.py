@@ -1,235 +1,292 @@
-import random
-from datetime import datetime
+
+# analysis.py
+
+import statistics
 
 
-def direction(score):
-
-    if score >= 65:
-        return "🟢 شراء محتمل"
-
-    elif score <= 35:
-        return "🔴 بيع محتمل"
-
-    else:
-        return "🟡 انتظار"
+def last_price(data):
+    return data[-1]["close"]
 
 
 
-# 1) التحليل الكلاسيكي
-def classic(data):
+def average_volume(data, period=20):
 
-    prices = data
+    vols = [
+        x["volume"]
+        for x in data[-period:]
+    ]
 
-    change = (
-        prices[-1] - prices[0]
-    ) / prices[0] * 100
-
-
-    score = 50 + change
-
-
-    return f"""
-📈 <b>التحليل الكلاسيكي</b>
-
-تغير السعر:
-{change:.2f}%
-
-RSI تقديري:
-{random.randint(35,70)}
-
-EMA:
-اتجاه {'صاعد' if change>0 else 'هابط'}
-
-النتيجة:
-{direction(score)}
-"""
+    return statistics.mean(vols)
 
 
 
-# 2) وايكوف
+# =========================
+# وايكوف
+# =========================
+
 def wyckoff(data):
 
-    volume=random.randint(
-        50,
-        200
+    price = last_price(data)
+
+    avg = statistics.mean(
+        [x["close"] for x in data[-50:]]
     )
 
+    volume = average_volume(data)
 
-    if volume > 130:
-
-        phase="تجميع قوي من السوق"
-
-    else:
-
-        phase="حركة طبيعية"
+    last_volume = data[-1]["volume"]
 
 
-    return f"""
-📊 <b>تحليل وايكوف</b>
+    if price > avg and last_volume > volume:
 
-مرحلة السوق:
-{phase}
-
-قوة الحجم:
-{volume}%
-
-المراقبة:
-مناطق التجميع والتوزيع
-
-الإشارة:
-{"🟢 دخول محتمل" if volume>130 else "🟡 انتظار"}
-"""
+        return {
+            "signal":"شراء",
+            "reason":
+            "مرحلة تراكم وايكوف مع زيادة حجم",
+            "confidence":78
+        }
 
 
+    elif price < avg and last_volume > volume:
 
-# 3) إليوت
+        return {
+            "signal":"بيع",
+            "reason":
+            "توزيع وايكوف وضغط بيعي",
+            "confidence":75
+        }
+
+
+    return {
+        "signal":"انتظار",
+        "reason":
+        "مرحلة توازن سعري",
+        "confidence":55
+    }
+
+
+
+
+# =========================
+# إليوت
+# =========================
+
 def elliott(data):
 
-    wave=random.randint(
-        1,
-        5
-    )
-
-
-    return f"""
-🌊 <b>تحليل موجات إليوت</b>
-
-الموجة الحالية:
-الموجة {wave}
-
-البنية:
-{'صعودية' if wave in [1,3,5] else 'تصحيحية'}
-
-النصيحة:
-متابعة القمة والقاع الأخير
-"""
-
-
-
-# 4) هارمونيك
-def harmonic(data):
-
-    pattern=random.choice(
-        [
-            "Gartley",
-            "Bat",
-            "Butterfly"
-        ]
-    )
-
-
-    ratio=random.choice(
-        [
-            "0.618",
-            "0.786",
-            "0.886"
-        ]
-    )
-
-
-    return f"""
-🦋 <b>تحليل هارمونيك</b>
-
-النموذج:
-{pattern}
-
-نسبة فيبوناتشي:
-{ratio}
-
-الحالة:
-منطقة مراقبة انعكاس محتملة
-"""
-
-
-
-# 5) الحيتان
-def whales(data):
-
-    volume=random.randint(
-        100,
-        300
-    )
-
-
-    return f"""
-🐋 <b>تحليل الحيتان</b>
-
-نشاط الحجم:
-{volume}%
-
-حالة السوق:
-{"وجود حركة كبيرة" if volume>180 else "نشاط عادي"}
-
-المراقبة:
-الشموع ذات الحجم المرتفع
-"""
-
-
-
-# 6) السيولة
-def liquidity(data):
-
-    buy=random.randint(
-        40,
-        80
-    )
-
-    sell=100-buy
-
-
-    return f"""
-🔒 <b>تحليل السيولة</b>
-
-ضغط الشراء:
-{buy}%
-
-ضغط البيع:
-{sell}%
-
-الاتجاه:
-{"شراء" if buy>sell else "بيع"}
-"""
-
-
-
-async def run_analysis(symbol, school):
-
-    # بيانات تجريبية مؤقتة
-    # سيتم ربط Binance لاحقاً
-
-    data=[
-        random.uniform(90,110)
-        for _ in range(100)
+    closes=[
+        x["close"]
+        for x in data[-30:]
     ]
 
 
-    header=f"""
-💰 العملة: {symbol}
-🕒 {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
-
-"""
-
-
-    if school=="classic":
-        result=classic(data)
-
-    elif school=="wyckoff":
-        result=wyckoff(data)
-
-    elif school=="elliott":
-        result=elliott(data)
-
-    elif school=="harmonic":
-        result=harmonic(data)
-
-    elif school=="whales":
-        result=whales(data)
-
-    elif school=="liquidity":
-        result=liquidity(data)
-
-    else:
-        result="❌ مدرسة غير موجودة"
+    rising=sum(
+        closes[i]>closes[i-1]
+        for i in range(1,len(closes))
+    )
 
 
-    return header + result
+    if rising >=20:
+
+        return {
+            "signal":"شراء",
+            "reason":
+            "احتمال اكتمال موجة دافعة صاعدة",
+            "confidence":72
+        }
+
+
+    if rising <=8:
+
+        return {
+            "signal":"بيع",
+            "reason":
+            "احتمال نهاية موجة هابطة",
+            "confidence":70
+        }
+
+
+    return {
+        "signal":"انتظار",
+        "reason":
+        "الموجة غير واضحة",
+        "confidence":50
+    }
+
+
+
+
+# =========================
+# هارمونيك
+# =========================
+
+def harmonic(data):
+
+    high=max(
+        x["high"]
+        for x in data[-50:]
+    )
+
+    low=min(
+        x["low"]
+        for x in data[-50:]
+    )
+
+
+    current=last_price(data)
+
+
+    fib=(current-low)/(high-low)
+
+
+    if 0.60 < fib < 0.65:
+
+        return {
+            "signal":"شراء",
+            "reason":
+            "منطقة تصحيح هارمونيك محتملة",
+            "confidence":76
+        }
+
+
+    if 0.35 < fib < 0.40:
+
+        return {
+            "signal":"بيع",
+            "reason":
+            "منطقة انعكاس هارمونيك محتملة",
+            "confidence":74
+        }
+
+
+    return {
+        "signal":"انتظار",
+        "reason":
+        "لا يوجد نموذج هارمونيك مكتمل",
+        "confidence":45
+    }
+
+
+
+
+# =========================
+# التحليل الكلاسيكي
+# =========================
+
+def classic(data):
+
+    closes=[
+        x["close"]
+        for x in data
+    ]
+
+
+    ema20=statistics.mean(
+        closes[-20:]
+    )
+
+    ema50=statistics.mean(
+        closes[-50:]
+    )
+
+    price=closes[-1]
+
+
+    if price > ema20 > ema50:
+
+        return {
+            "signal":"شراء",
+            "reason":
+            "اتجاه صاعد EMA",
+            "confidence":80
+        }
+
+
+    if price < ema20 < ema50:
+
+        return {
+            "signal":"بيع",
+            "reason":
+            "اتجاه هابط EMA",
+            "confidence":80
+        }
+
+
+    return {
+        "signal":"انتظار",
+        "reason":
+        "تضارب المتوسطات",
+        "confidence":50
+    }
+
+
+
+
+# =========================
+# الحيتان
+# =========================
+
+def whales(data):
+
+    avg=average_volume(data)
+
+    current=data[-1]
+
+
+    if current["volume"] > avg*3:
+
+
+        if current["close"] > current["open"]:
+
+            return {
+                "signal":"شراء قوي",
+                "reason":
+                "دخول حجم حوت شرائي",
+                "confidence":85
+            }
+
+
+        else:
+
+            return {
+                "signal":"بيع قوي",
+                "reason":
+                "تصريف حوت",
+                "confidence":85
+            }
+
+
+    return {
+        "signal":"انتظار",
+        "reason":
+        "لا يوجد نشاط حيتان",
+        "confidence":40
+    }
+
+
+
+
+# ربط المدارس
+
+SCHOOLS_ANALYSIS = {
+
+    "wyckoff":wyckoff,
+    "elliott":elliott,
+    "harmonic":harmonic,
+    "classic":classic,
+    "whales":whales
+
+}
+
+
+
+def run_analysis(name,data):
+
+    if name not in SCHOOLS_ANALYSIS:
+        return {
+            "signal":"خطأ",
+            "reason":"مدرسة غير موجودة",
+            "confidence":0
+        }
+
+
+    return SCHOOLS_ANALYSIS[name](data)
