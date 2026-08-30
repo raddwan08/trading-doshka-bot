@@ -1,35 +1,35 @@
-# config.py
 
 import os
-from dataclasses import dataclass
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-# Telegram
+# Telegram Bot
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+
+# Admin Telegram ID
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 
 
 # Database
-DB_NAME = "trading_bot.db"
+DATABASE = "doshka.db"
 
 
-# Binance
-BINANCE_API = "https://api.binance.com"
-
-
-# العملات التي يراقبها النظام
+# العملات الأساسية
 COINS = [
     "BTC",
     "ETH",
     "BNB",
     "SOL",
     "XRP",
+    "DOGE",
     "ADA",
-    "DOGE"
+    "AVAX"
 ]
 
 
-# الفواصل الزمنية
+# الفريمات
 TIMEFRAMES = [
     "5m",
     "15m",
@@ -39,88 +39,83 @@ TIMEFRAMES = [
 ]
 
 
-@dataclass
-class Plan:
-    name: str
-    price: float
-    spot: bool
-    futures: bool
-    alerts: bool
-
-
-# الاشتراكات
-PLANS = {
-
-    "free": Plan(
-        name="تجريبي",
-        price=0,
-        spot=False,
-        futures=False,
-        alerts=False
-    ),
-
-    "pro": Plan(
-        name="PRO Spot",
-        price=20,
-        spot=True,
-        futures=False,
-        alerts=True
-    ),
-
-    "elite": Plan(
-        name="ELITE Futures",
-        price=50,
-        spot=True,
-        futures=True,
-        alerts=True
-    )
-}
-
-
 # المدارس
 SCHOOLS = {
 
     "wyckoff": {
-        "name": "وايكوف",
-        "emoji": "📊"
+        "name": "📊 Wyckoff",
+        "description":
+        "تحليل التجميع والتصريف والسيولة والحجم"
     },
 
     "elliott": {
-        "name": "إليوت",
-        "emoji": "🌊"
+        "name": "🌊 Elliott Wave",
+        "description":
+        "تحليل الموجات والاتجاه"
     },
 
     "harmonic": {
-        "name": "هارمونيك",
-        "emoji": "🦋"
+        "name": "🦋 Harmonic",
+        "description":
+        "اكتشاف نماذج Gartley و Bat"
     },
 
     "classic": {
-        "name": "كلاسيكي",
-        "emoji": "📈"
+        "name": "📈 Classic Technical",
+        "description":
+        "RSI MACD EMA Support Resistance"
     },
 
     "whales": {
-        "name": "الحيتان",
-        "emoji": "🐋"
+        "name": "🐋 Whales",
+        "description":
+        "كشف تحركات الحجم الكبيرة"
     }
 }
 
 
-# إعدادات التنبيهات
 
+# خطط الاشتراك
+
+PLANS = {
+
+    "basic": {
+        "name": "Basic",
+        "price": 15,
+        "days": 30
+    },
+
+    "pro": {
+        "name": "Professional",
+        "price": 40,
+        "days": 90
+    },
+
+    "vip": {
+        "name": "VIP Futures",
+        "price": 100,
+        "days": 365
+    }
+
+}
+
+
+# أنواع الحساب
+
+MARKETS = {
+
+    "spot": {
+        "name": "Spot",
+        "premium": False
+    },
+
+    "future": {
+        "name": "Futures",
+        "premium": True
+    }
+
+}
+
+
+# مدة فحص التنبيهات
 ALERT_INTERVAL = 60
-
-
-# العملات التي تتم مراقبتها للعقود
-
-FUTURES_SYMBOLS = [
-    "BTCUSDT",
-    "ETHUSDT",
-    "SOLUSDT"
-]
-
-
-# حدود تنبيه الحيتان
-
-WHALE_VOLUME_MULTIPLIER = 3
