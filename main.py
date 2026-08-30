@@ -464,14 +464,14 @@ async def confirm_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
 
-async def main():
+ def main():
     """Main function"""
     if not TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN is not set!")
         return
     
     # Initialize database
-    await init_db()
+    asyncio.run(init_db())
     
     # Create application
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
@@ -488,4 +488,4 @@ async def main():
     await app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
