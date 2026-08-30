@@ -17,7 +17,7 @@ from config import *
 from analysis.price_action import PriceActionAnalyzer
 from analysis.smc import SMCAnalyzer
 from analysis.wyckoff import WyckoffAnalyzer
-from analysis.elliott_wave import ElliottWaveAnalyzer
+from analysis.elliott import ElliottWaveAnalyzer
 from analysis.ichimoku import IchimokuAnalyzer
 from analysis.fibonacci import FibonacciAnalyzer
 from payments.crypto_payments import CryptoPaymentProcessor
