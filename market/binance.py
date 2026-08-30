@@ -1,49 +1,57 @@
 import aiohttp
-import asyncio
-from datetime import datetime
+import time
 
 
-BINANCE_SPOT = "https://api.binance.com"
-BINANCE_FUTURES = "https://fapi.binance.com"
+BINANCE_API = "https://api.binance.com"
 
 
-async def get_price(symbol="BTCUSDT", market="spot"):
+async def get_price(symbol: str):
     """
-    جلب السعر الحالي
+    جلب السعر الحالي للعملة
+    مثال:
+    BTCUSDT
+    ETHUSDT
     """
-    base = BINANCE_SPOT if market == "spot" else BINANCE_FUTURES
 
-    url = f"{base}/api/v3/ticker/price"
+    symbol = symbol.upper()
 
-    if market == "futures":
-        url = f"{base}/fapi/v1/ticker/price"
+    url = f"{BINANCE_API}/api/v3/ticker/price"
 
     params = {
-        "symbol": symbol.upper()
+        "symbol": symbol
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as response:
-            data = await response.json()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url,
+                params=params,
+                timeout=10
+            ) as response:
 
-            return {
-                "symbol": symbol.upper(),
-                "price": float(data["price"]),
-                "market": market,
-                "time": datetime.utcnow().isoformat()
-            }
+                data = await response.json()
+
+                if "price" in data:
+                    return float(data["price"])
+
+                return None
+
+    except Exception as e:
+        print("BINANCE PRICE ERROR:", e)
+        return None
 
 
-async def get_candles(symbol="BTCUSDT", interval="1h", limit=100, market="spot"):
+
+async def get_candles(
+    symbol="BTCUSDT",
+    interval="1h",
+    limit=100
+):
     """
     جلب الشموع للتحليل الفني
     """
 
-    if market == "spot":
-        url = f"{BINANCE_SPOT}/api/v3/klines"
-    else:
-        url = f"{BINANCE_FUTURES}/fapi/v1/klines"
-
+    url = f"{BINANCE_API}/api/v3/klines"
 
     params = {
         "symbol": symbol.upper(),
@@ -52,73 +60,65 @@ async def get_candles(symbol="BTCUSDT", interval="1h", limit=100, market="spot")
     }
 
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as response:
+    try:
 
-            candles = await response.json()
+        async with aiohttp.ClientSession() as session:
 
-            result = []
+            async with session.get(
+                url,
+                params=params,
+                timeout=10
+            ) as response:
 
-            for c in candles:
-                result.append({
-
-                    "time": datetime.fromtimestamp(
-                        c[0] / 1000
-                    ).isoformat(),
-
-                    "open": float(c[1]),
-                    "high": float(c[2]),
-                    "low": float(c[3]),
-                    "close": float(c[4]),
-                    "volume": float(c[5])
-
-                })
-
-            return result
+                data = await response.json()
 
 
+                candles = []
 
-async def get_market_data(symbol, interval="1h", market="spot"):
 
-    price = await get_price(
-        symbol,
-        market
-    )
+                for candle in data:
 
-    candles = await get_candles(
-        symbol,
-        interval,
-        100,
-        market
-    )
+                    candles.append(
+                        {
+                            "time": candle[0],
+                            "open": float(candle[1]),
+                            "high": float(candle[2]),
+                            "low": float(candle[3]),
+                            "close": float(candle[4]),
+                            "volume": float(candle[5])
+                        }
+                    )
+
+
+                return candles
+
+
+    except Exception as e:
+
+        print("BINANCE CANDLE ERROR:", e)
+        return []
+
+
+
+async def market_status(symbol):
+
+    """
+    حالة السوق
+    """
+
+    price = await get_price(symbol)
+
+    if not price:
+        return {
+            "status": "error",
+            "message": "لا يوجد بيانات"
+        }
 
 
     return {
 
-        "info": price,
-
-        "candles": candles
+        "symbol": symbol.upper(),
+        "price": price,
+        "time": int(time.time())
 
     }
-
-
-
-# اختبار مباشر
-if __name__ == "__main__":
-
-    async def test():
-
-        data = await get_market_data(
-            "BTCUSDT",
-            "1h",
-            "spot"
-        )
-
-        print(data["info"])
-        print(
-            len(data["candles"]),
-            "candles loaded"
-        )
-
-
-    asyncio.run(test())
