@@ -1,121 +1,128 @@
-
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
+# ==========================
 # Telegram Bot
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+# ==========================
 
-# Admin Telegram ID
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-
-
-# Database
-DATABASE = "doshka.db"
+BOT_TOKEN = os.getenv(
+    "BOT_TOKEN",
+    "PUT_YOUR_BOT_TOKEN_HERE"
+)
 
 
-# العملات الأساسية
-COINS = [
-    "BTC",
-    "ETH",
-    "BNB",
-    "SOL",
-    "XRP",
-    "DOGE",
-    "ADA",
-    "AVAX"
-]
+
+# ==========================
+# Admin
+# ==========================
+
+ADMIN_ID = int(
+    os.getenv(
+        "ADMIN_ID",
+        "0"
+    )
+)
 
 
-# الفريمات
+
+# ==========================
+# Market Settings
+# ==========================
+
+DEFAULT_COIN = "BTC"
+
 TIMEFRAMES = [
+
     "5m",
     "15m",
     "1h",
     "4h",
-    "1d"
+    "1D"
+
 ]
 
 
-# المدارس
-SCHOOLS = {
+MARKETS = {
 
-    "wyckoff": {
-        "name": "📊 Wyckoff",
-        "description":
-        "تحليل التجميع والتصريف والسيولة والحجم"
-    },
+    "spot":
+        "Spot",
 
-    "elliott": {
-        "name": "🌊 Elliott Wave",
-        "description":
-        "تحليل الموجات والاتجاه"
-    },
+    "futures":
+        "Futures"
 
-    "harmonic": {
-        "name": "🦋 Harmonic",
-        "description":
-        "اكتشاف نماذج Gartley و Bat"
-    },
-
-    "classic": {
-        "name": "📈 Classic Technical",
-        "description":
-        "RSI MACD EMA Support Resistance"
-    },
-
-    "whales": {
-        "name": "🐋 Whales",
-        "description":
-        "كشف تحركات الحجم الكبيرة"
-    }
 }
 
 
 
-# خطط الاشتراك
+# ==========================
+# Analysis Schools
+# ==========================
+
+SCHOOLS = {
+
+    "wyckoff":
+    {
+        "name":"Wyckoff",
+        "emoji":"📊"
+    },
+
+
+    "elliott":
+    {
+        "name":"Elliott Wave",
+        "emoji":"🌊"
+    },
+
+
+    "harmonic":
+    {
+        "name":"Harmonic",
+        "emoji":"🦋"
+    },
+
+
+    "classic":
+    {
+        "name":"Classic",
+        "emoji":"📈"
+    },
+
+
+    "whales":
+    {
+        "name":"Whales",
+        "emoji":"🐋"
+    }
+
+}
+
+
+
+# ==========================
+# Subscription Placeholder
+# ==========================
 
 PLANS = {
 
-    "basic": {
-        "name": "Basic",
-        "price": 15,
-        "days": 30
+    "trial":
+    {
+        "name":"Trial",
+        "days":7
     },
 
-    "pro": {
-        "name": "Professional",
-        "price": 40,
-        "days": 90
-    },
 
-    "vip": {
-        "name": "VIP Futures",
-        "price": 100,
-        "days": 365
+    "premium":
+    {
+        "name":"Premium",
+        "days":30
     }
 
 }
 
 
-# أنواع الحساب
 
-MARKETS = {
+# ==========================
+# Database
+# ==========================
 
-    "spot": {
-        "name": "Spot",
-        "premium": False
-    },
-
-    "future": {
-        "name": "Futures",
-        "premium": True
-    }
-
-}
-
-
-# مدة فحص التنبيهات
-ALERT_INTERVAL = 60
+DATABASE = "doshka.db"
