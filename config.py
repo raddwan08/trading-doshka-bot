@@ -1,128 +1,21 @@
+
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-# ==========================
-# Telegram Bot
-# ==========================
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
-BOT_TOKEN = os.getenv(
-    "BOT_TOKEN",
-    "PUT_YOUR_BOT_TOKEN_HERE"
-)
+COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
+CMC_API_KEY = os.getenv("CMC_API_KEY")
 
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bot.db")
 
-
-# ==========================
-# Admin
-# ==========================
-
-ADMIN_ID = int(
-    os.getenv(
-        "ADMIN_ID",
-        "0"
-    )
-)
-
-
-
-# ==========================
-# Market Settings
-# ==========================
-
-DEFAULT_COIN = "BTC"
-
-TIMEFRAMES = [
-
-    "5m",
-    "15m",
-    "1h",
-    "4h",
-    "1D"
-
-]
-
-
-MARKETS = {
-
-    "spot":
-        "Spot",
-
-    "futures":
-        "Futures"
-
+# باقات الاشتراك (للعرض فقط)
+SUBSCRIPTION_PLANS = {
+    "1_month": {"days": 30, "price_usd": 20},
+    "3_months": {"days": 90, "price_usd": 50},
+    "6_months": {"days": 180, "price_usd": 90},
+    "12_months": {"days": 365, "price_usd": 150},
 }
-
-
-
-# ==========================
-# Analysis Schools
-# ==========================
-
-SCHOOLS = {
-
-    "wyckoff":
-    {
-        "name":"Wyckoff",
-        "emoji":"📊"
-    },
-
-
-    "elliott":
-    {
-        "name":"Elliott Wave",
-        "emoji":"🌊"
-    },
-
-
-    "harmonic":
-    {
-        "name":"Harmonic",
-        "emoji":"🦋"
-    },
-
-
-    "classic":
-    {
-        "name":"Classic",
-        "emoji":"📈"
-    },
-
-
-    "whales":
-    {
-        "name":"Whales",
-        "emoji":"🐋"
-    }
-
-}
-
-
-
-# ==========================
-# Subscription Placeholder
-# ==========================
-
-PLANS = {
-
-    "trial":
-    {
-        "name":"Trial",
-        "days":7
-    },
-
-
-    "premium":
-    {
-        "name":"Premium",
-        "days":30
-    }
-
-}
-
-
-
-# ==========================
-# Database
-# ==========================
-
-DATABASE = "doshka.db"
