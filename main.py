@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import os
 import aiohttp
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from models import Base, User, Payment, AnalysisHistory
 from config import *
