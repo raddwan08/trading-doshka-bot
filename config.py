@@ -1,4 +1,3 @@
-
 import os
 from dotenv import load_dotenv
 
@@ -6,8 +5,11 @@ load_dotenv()
 
 # إعدادات البوت
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+print(f"BOT_TOKEN exists: {bool(BOT_TOKEN)}")
+print(f"BOT_TOKEN length: {len(BOT_TOKEN)}")
+print(f"All env vars: {[k for k in os.environ.keys() if 'TOKEN' in k or 'BOT' in k]}")
 
-# قاعدة البيانات (Railway سيضيف DATABASE_URL تلقائياً)
+# قاعدة البيانات
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///crypto_bot.db")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
