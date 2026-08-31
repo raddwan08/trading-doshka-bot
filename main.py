@@ -35,7 +35,7 @@ logger = logging.getLogger(name)
 
 class CryptoAnalysisBot:
     def __init__(self):
-logger.info("🚀 تهيئة البوت...")
+        logger.info("🚀 تهيئة البوت...")  # 8 مسافات (مسافتين إضافيتين)
 
 if not BOT_TOKEN:
 logger.error("❌ BOT_TOKEN غير موجود في متغيرات البيئة!")
