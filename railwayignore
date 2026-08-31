@@ -1,0 +1,9 @@
+cat > .railwayignore << 'EOF'
+Dockerfile
+dockerfile
+.git
+.env
+__pycache__
+*.pyc
+*.db
+EOF
