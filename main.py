@@ -25,7 +25,7 @@ from services.crypto_api import CryptoAPI
 from services.blockchain_verifier import BlockchainVerifier
 from utils.keyboards import main_menu_keyboard
 
-إعداد التسجيل
+# إعداد التسجيل
 logging.basicConfig(
 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 level=logging.INFO,
