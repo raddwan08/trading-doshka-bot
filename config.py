@@ -3,11 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# إعدادات البوت
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-print(f"BOT_TOKEN exists: {bool(BOT_TOKEN)}")
-print(f"BOT_TOKEN length: {len(BOT_TOKEN)}")
-print(f"All env vars: {[k for k in os.environ.keys() if 'TOKEN' in k or 'BOT' in k]}")
+# إعدادات البوت - ضع التوكن هنا مباشرة
+BOT_TOKEN = "6194468069:AAG3J3VUAsuoZo0NRF33EvofIeJrqP1ZaGI"
 
 # قاعدة البيانات
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///crypto_bot.db")
