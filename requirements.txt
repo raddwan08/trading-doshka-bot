@@ -1,0 +1,7 @@
+python-telegram-bot20.7
+python-dotenv1.0.0
+SQLAlchemy2.0.23
+aiohttp3.9.1
+requests2.31.0
+web36.14.0
+psycopg2-binary==2.9.9
