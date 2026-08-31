@@ -60,61 +60,66 @@ class CryptoAnalysisBot:
         logger.info("✅ تم التهيئة بنجاح")
     
     def setup_handlers(self):
-        # الأوامر الأساسية
-        self.application.add_handler(CommandHandler("start", self.start_handler.start))
-        self.application.add_handler(CommandHandler("help", self.start_handler.help))
-        
-        # الاشتراك والدفع
-        self.application.add_handler(CommandHandler("subscribe", self.subscription_handler.show_plans))
-        self.application.add_handler(CommandHandler("payment", self.payment_handler.show_payment_options))
-        self.application.add_handler(CommandHandler("verify", self.payment_handler.verify_payment))
-        
-        # التحليل
-        self.application.add_handler(CommandHandler("analysis", self.analysis_handler.show_analysis_menu))
-        self.application.add_handler(CommandHandler("price", self.analysis_handler.get_price))
-        self.application.add_handler(CommandHandler("technical", self.analysis_handler.technical_analysis))
-        self.application.add_handler(CommandHandler("onchain", self.analysis_handler.onchain_analysis))
-        self.application.add_handler(CommandHandler("signals", self.analysis_handler.show_signals))
-        
-        # التنبيهات
-        self.application.add_handler(CommandHandler("alerts", self.alert_service.show_alert_settings))
-        self.application.add_handler(CommandHandler("myalerts", self.alert_service.show_my_alerts))
-        self.application.add_handler(CommandHandler("deletealert", self.alert_service.delete_alert))
-        
-        # Callback handlers
-        self.application.add_handler(CallbackQueryHandler(
-            self.handle_main_menu,
-            pattern="^(analysis_menu|prices_menu|alerts_menu|subscribe_menu|help_menu|back_main)$"
-        ))
-        
-        self.application.add_handler(CallbackQueryHandler(
-            self.subscription_handler.handle_subscription_callback,
-            pattern="^(plan_|subscribe_)"
-        ))
-        
-        self.application.add_handler(CallbackQueryHandler(
-            self.analysis_handler.handle_analysis_callback,
-            pattern="^(analysis_|tf_|ta_|onchain_|token_|contract_|signal_)"
-        ))
-        
-        self.application.add_handler(CallbackQueryHandler(
-            self.payment_handler.handle_payment_callback,
-            pattern="^(payment_|confirm_|copy_)"
-        ))
-        
-        self.application.add_handler(CallbackQueryHandler(
-            self.alert_service.handle_alert_callback,
-            pattern="^(alert_|set_alert_|delete_alert_)"
-        ))
-        
-        # الرسائل النصية
-        self.application.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            self.handle_text_message
-        ))
-        
-        # معالج الأخطاء
-        self.application.add_error_handler(self.error_handler)
+        def setup_handlers(self):
+    # الأوامر الأساسية
+    self.application.add_handler(CommandHandler("start", self.start_handler.start))
+    self.application.add_handler(CommandHandler("help", self.start_handler.help))
+    
+    # الاشتراك والدفع
+    self.application.add_handler(CommandHandler("subscribe", self.subscription_handler.show_plans))
+    self.application.add_handler(CommandHandler("payment", self.payment_handler.show_payment_options))
+    self.application.add_handler(CommandHandler("verify", self.payment_handler.verify_payment))
+    
+    # التحليل
+    self.application.add_handler(CommandHandler("analysis", self.analysis_handler.show_analysis_menu))
+    self.application.add_handler(CommandHandler("price", self.analysis_handler.get_price))
+    self.application.add_handler(CommandHandler("technical", self.analysis_handler.technical_analysis))
+    self.application.add_handler(CommandHandler("onchain", self.analysis_handler.onchain_analysis))
+    self.application.add_handler(CommandHandler("signals", self.analysis_handler.show_signals))
+    
+    # التنبيهات
+    self.application.add_handler(CommandHandler("alerts", self.alert_service.show_alert_settings))
+    self.application.add_handler(CommandHandler("myalerts", self.alert_service.show_my_alerts))
+    self.application.add_handler(CommandHandler("deletealert", self.alert_service.delete_alert))
+    
+    # Callback handlers - القائمة الرئيسية
+    self.application.add_handler(CallbackQueryHandler(
+        self.handle_main_menu,
+        pattern="^(analysis_menu|prices_menu|alerts_menu|subscribe_menu|help_menu|back_main)$"
+    ))
+    
+    # Callback handlers - الدفع
+    self.application.add_handler(CallbackQueryHandler(
+        self.payment_handler.handle_payment_callback,
+        pattern="^payment_"
+    ))
+    
+    # Callback handlers - التحليل
+    self.application.add_handler(CallbackQueryHandler(
+        self.analysis_handler.handle_analysis_callback,
+        pattern="^analysis_"
+    ))
+    
+    # Callback handlers - التنبيهات
+    self.application.add_handler(CallbackQueryHandler(
+        self.alert_service.handle_alert_callback,
+        pattern="^alert_"
+    ))
+    
+    # Callback handlers - الاشتراك
+    self.application.add_handler(CallbackQueryHandler(
+        self.subscription_handler.handle_subscription_callback,
+        pattern="^subscribe_"
+    ))
+    
+    # الرسائل النصية
+    self.application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        self.handle_text_message
+    ))
+    
+    # معالج الأخطاء
+    self.application.add_error_handler(self.error_handler)
     
     async def handle_main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
