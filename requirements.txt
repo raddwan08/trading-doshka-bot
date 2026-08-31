@@ -1,7 +1,7 @@
 python-telegram-bot==20.7
 python-dotenv==1.0.0
 SQLAlchemy==2.0.23
-aiohttp3.9.1
-requests2.31.0
-web36.14.0
+aiohttp==3.9.1
+requests==2.31.0
+web3==6.14.0
 psycopg2-binary==2.9.9
