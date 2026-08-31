@@ -69,3 +69,5 @@ class PaymentHandler:
         
         tx_hash = context.args[0]
         await update.message.reply_text("⏳ جاري التحقق من المعاملة...")
+def get_wallet(self, network):
+    return WALLETS.get(network)
