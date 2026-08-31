@@ -34,7 +34,7 @@ handlers=[logging.StreamHandler(sys.stdout)]
 logger = logging.getLogger(name)
 
 class CryptoAnalysisBot:
-def init(self):
+    def __init__(self):
 logger.info("🚀 تهيئة البوت...")
 
 if not BOT_TOKEN:
