@@ -152,16 +152,34 @@ class CryptoAnalysisBot:
             logger.error(f"Error in main menu: {e}")
     
     async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        text = update.message.text.strip().upper()
-        
-        if text.isalnum() and 2 <= len(text) <= 10:
-            await self.analysis_handler.get_coin_info(update, context, text)
-        else:
-            await update.message.reply_text(
-                "🔍 أرسل رمز عملة مثل BTC\n"
-                "أو استخدم /help للأوامر"
-            )
+    text = update.message.text.strip().upper()
     
+    # قائمة الشبكات المدعومة
+    networks = {"SOLANA": "SOL", "SOL": "SOL", "ETHEREUM": "ETH", "ETH": "ETH", "BSC": "BSC"}
+    
+    # إذا كان النص اسم شبكة دفع
+    if text in networks:
+        network = networks[text]
+        wallet = self.payment_handler.get_wallet(network)
+        if wallet:
+            message = (
+                f"💳 الدفع عبر {network}\n\n"
+                f"أرسل USDT إلى:\n"
+                f"`{wallet}`\n\n"
+                f"بعد التحويل أرسل:\n"
+                f"/verify TRANSACTION_HASH"
+            )
+            await update.message.reply_text(message, parse_mode='Markdown')
+            return
+    
+    # إذا كان النص رمز عملة
+    if text.isalnum() and 2 <= len(text) <= 10:
+        await self.analysis_handler.get_coin_info(update, context, text)
+    else:
+        await update.message.reply_text(
+            "🔍 أرسل رمز عملة مثل BTC\n"
+            "أو استخدم /help للأوامر"
+        )
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error: {context.error}")
         try:
