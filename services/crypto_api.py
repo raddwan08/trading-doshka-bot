@@ -21,24 +21,29 @@ class CryptoAPI:
     async def get_coin_data(self, symbol):
         try:
             session = await self.get_session()
-            url = f"{self.base_url}/coins/{symbol.lower()}"
+            # استخدام simple/price بدلاً من coins/
+            url = f"{self.base_url}/simple/price"
+            params = {
+                'ids': symbol.lower(),
+                'vs_currencies': 'usd',
+                'include_market_cap': 'true',
+                'include_24hr_change': 'true'
+            }
             
-            async with session.get(url) as response:
+            async with session.get(url, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
-                    market_data = data.get('market_data', {})
+                    coin_data = data.get(symbol.lower(), {})
                     
-                    return {
-                        "name": data.get('name', symbol),
-                        "symbol": data.get('symbol', symbol).upper(),
-                        "current_price": market_data.get('current_price', {}).get('usd', 0),
-                        "market_cap": market_data.get('market_cap', {}).get('usd', 0),
-                        "total_supply": market_data.get('total_supply', 0),
-                        "circulating_supply": market_data.get('circulating_supply', 0),
-                        "max_supply": market_data.get('max_supply', 0),
-                        "price_change_24h": market_data.get('price_change_percentage_24h', 0),
-                        "volume_24h": market_data.get('total_volume', {}).get('usd', 0)
-                    }
+                    if coin_data:
+                        return {
+                            "name": symbol.upper(),
+                            "symbol": symbol.upper(),
+                            "current_price": coin_data.get('usd', 0),
+                            "market_cap": coin_data.get('usd_market_cap', 0),
+                            "price_change_24h": coin_data.get('usd_24h_change', 0),
+                            "volume_24h": 0
+                        }
             return None
         except Exception as e:
             logger.error(f"Error fetching {symbol}: {e}")
