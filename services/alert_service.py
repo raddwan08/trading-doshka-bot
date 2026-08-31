@@ -9,19 +9,20 @@ class AlertService:
         self.application = application
         self.db = db
         self.crypto_api = crypto_api
-    
+
     async def show_alert_settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        message = "🔔 التنبيهات\n\nاختر نوع التنبيه:"
-        
-        keyboard = [
-            [InlineKeyboardButton("💰 تنبيه السعر", callback_data="alert_price")]
-        ]
-        
-        await update.message.reply_text(
-            message,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='Markdown'
-        )
+    message = "🔔 التنبيهات\n\nاختر نوع التنبيه:"
+    
+    keyboard = [
+        [InlineKeyboardButton("💰 تنبيه السعر", callback_data="alert_price")],
+        [InlineKeyboardButton("📊 تنبيه التغير", callback_data="alert_change")]
+    ]
+    
+    await update.message.reply_text(
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
     
     async def handle_alert_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
