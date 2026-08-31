@@ -150,8 +150,7 @@ class CryptoAnalysisBot:
                 )
         except Exception as e:
             logger.error(f"Error in main menu: {e}")
-    
-    async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().upper()
     
     # قائمة الشبكات المدعومة
@@ -171,6 +170,7 @@ class CryptoAnalysisBot:
             )
             await update.message.reply_text(message, parse_mode='Markdown')
             return
+
     
     # إذا كان النص رمز عملة
     if text.isalnum() and 2 <= len(text) <= 10:
