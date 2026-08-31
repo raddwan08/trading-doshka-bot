@@ -17,7 +17,8 @@ class PaymentHandler:
             "نقبل USDT على:\n"
             "1️⃣ Solana\n"
             "2️⃣ Ethereum\n"
-            "3️⃣ BSC"
+            "3️⃣ BSC\n\n"
+            "اختر الشبكة:"
         )
         
         keyboard = [
@@ -46,7 +47,8 @@ class PaymentHandler:
         if wallet:
             message = (
                 f"💳 الدفع عبر {network}\n\n"
-                f"أرسل USDT إلى:\n{wallet}\n\n"
+                f"أرسل USDT إلى:\n"
+                f"`{wallet}`\n\n"
                 f"بعد التحويل أرسل:\n"
                 f"/verify TRANSACTION_HASH"
             )
@@ -54,6 +56,10 @@ class PaymentHandler:
             await query.edit_message_text(
                 message,
                 parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                "❌ شبكة غير معروفة"
             )
     
     async def verify_payment(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
