@@ -1,3 +1,4 @@
+
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 from config import WALLETS
@@ -41,7 +42,8 @@ class PaymentHandler:
         query = update.callback_query
         await query.answer()
         
-        network = query.data.replace("payment_", "").upper()
+        data = query.data
+        network = data.replace("payment_", "").upper()
         wallet = WALLETS.get(network)
         
         if wallet:
@@ -69,5 +71,6 @@ class PaymentHandler:
         
         tx_hash = context.args[0]
         await update.message.reply_text("⏳ جاري التحقق من المعاملة...")
-def get_wallet(self, network):
-    return WALLETS.get(network)
+    
+    def get_wallet(self, network):
+        return WALLETS.get(network)
