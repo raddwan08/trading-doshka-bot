@@ -51,14 +51,19 @@ class AnalysisHandler:
     
     async def technical_analysis(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not context.args:
-            await update.message.reply_text("❌ استخدم: /technical BTC")
+            await update.message.reply_text(
+                "📈 التحليل الفني\n\n"
+                "أرسل رمز العملة بعد الأمر:\n"
+                "/technical BTC\n"
+                "/technical ETH\n\n"
+                "أو أرسل الرمز مباشرة وسأحلله لك:"
+            )
             return
         
         symbol = context.args[0].upper()
         data = await self.crypto_api.get_coin_data(symbol)
         
         if data:
-            # إنشاء تحليل فني
             price = data['current_price']
             change = data['price_change_24h']
             
@@ -102,7 +107,13 @@ class AnalysisHandler:
     
     async def onchain_analysis(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not context.args:
-            await update.message.reply_text("❌ استخدم: /onchain BTC")
+            await update.message.reply_text(
+                "⛓️ تحليل On-Chain\n\n"
+                "أرسل رمز العملة بعد الأمر:\n"
+                "/onchain BTC\n"
+                "/onchain ETH\n\n"
+                "أو أرسل الرمز مباشرة وسأحلله لك:"
+            )
             return
         
         symbol = context.args[0].upper()
