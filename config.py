@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-إعدادات البوت
+# إعدادات البوت
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
 قاعدة البيانات (Railway سيضيف DATABASE_URL تلقائياً)
