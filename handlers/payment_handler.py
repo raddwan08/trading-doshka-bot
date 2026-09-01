@@ -89,106 +89,7 @@ class PaymentHandler:
     # اختيار شبكة الدفع
     # ==============================
 
-    async def handle_payment_callback(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE
-    ):
-
-        query = update.callback_query
-
-        try:
-
-            # إزالة دائرة التحميل في Telegram
-            await query.answer()
-
-            data = query.data
-
-            logger.info(
-                f"Payment callback received: {data}"
-            )
-
-            network_map = {
-                "payment_sol": "SOL",
-                "payment_eth": "ETH",
-                "payment_bsc": "BSC"
-            }
-
-            network = network_map.get(data)
-
-            if not network:
-
-                await query.edit_message_text(
-                    "❌ شبكة غير معروفة."
-                )
-
-                return
-
-
-            wallet = WALLETS.get(network)
-
-
-            logger.info(
-                f"Network: {network}, Wallet exists: {bool(wallet)}"
-            )
-
-
-            if not wallet:
-
-                await query.edit_message_text(
-                    f"❌ لم يتم إعداد محفظة {network} في السيرفر."
-                )
-
-                return
-
-
-            network_names = {
-                "SOL": "Solana",
-                "ETH": "Ethereum (ERC20)",
-                "BSC": "BNB Smart Chain (BEP20)"
-            }
-
-
-            network_name = network_names.get(
-                network,
-                network
-            )
-
-
-            message = (
-                f"💳 الدفع عبر {network_name}\n\n"
-                f"💰 العملة: USDT\n"
-                f"🌐 الشبكة: {network_name}\n\n"
-                f"📬 عنوان المحفظة:\n\n"
-                f"<code>{wallet}</code>\n\n"
-                f"⚠️ مهم: أرسل USDT على نفس الشبكة فقط.\n\n"
-                f"بعد التحويل أرسل:\n"
-                f"/verify TRANSACTION_HASH"
-            )
-
-
-            await query.edit_message_text(
-                message,
-                parse_mode="HTML"
-            )
-
-
-        except Exception as e:
-
-            logger.exception(
-                f"Payment callback error: {e}"
-            )
-
-            try:
-
-                await query.answer(
-                    "حدث خطأ أثناء اختيار الشبكة",
-                    show_alert=True
-                )
-
-            except Exception:
-
-                pass
+    
 
 
     # ==============================
@@ -210,7 +111,117 @@ class PaymentHandler:
 
             return
 
+async def handle_payment_callback(
+    self,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
+    query = update.callback_query
+
+    try:
+        if query is None:
+            logger.error("Callback query is None")
+            return
+
+        await query.answer()
+
+        data = query.data
+
+        logger.info(f"Payment callback data: {data}")
+
+        network_map = {
+            "payment_sol": "SOL",
+            "payment_eth": "ETH",
+            "payment_bsc": "BSC"
+        }
+
+        network = network_map.get(data)
+
+        if not network:
+
+            logger.error(f"Unknown payment callback: {data}")
+
+            await query.edit_message_text(
+                "❌ شبكة غير معروفة."
+            )
+
+            return
+
+
+        wallet = WALLETS.get(network)
+
+        logger.info(
+            f"Network selected: {network}"
+        )
+
+        logger.info(
+            f"Wallet exists: {wallet is not None}"
+        )
+
+
+        if not wallet:
+
+            await query.edit_message_text(
+                f"❌ محفظة {network} غير مهيأة في السيرفر."
+            )
+
+            return
+
+
+        # حفظ الشبكة للمستخدم
+        context.user_data["payment_network"] = network
+
+
+        network_names = {
+            "SOL": "Solana",
+            "ETH": "Ethereum",
+            "BSC": "BSC"
+        }
+
+
+        network_name = network_names.get(
+            network,
+            network
+        )
+
+
+        message = (
+            f"💳 الدفع عبر {network_name}\n\n"
+            f"💰 العملة: USDT\n"
+            f"🌐 الشبكة: {network_name}\n\n"
+            f"📬 عنوان المحفظة:\n\n"
+            f"<code>{wallet}</code>\n\n"
+            f"⚠️ أرسل USDT على نفس الشبكة فقط.\n\n"
+            f"بعد التحويل أرسل:\n"
+            f"/verify TRANSACTION_HASH"
+        )
+
+
+        await query.edit_message_text(
+            message,
+            parse_mode="HTML"
+        )
+
+
+        logger.info(
+            f"Payment network {network} displayed successfully"
+        )
+
+
+    except Exception as e:
+
+        logger.exception(
+            f"Payment callback error: {e}"
+        )
+
+        try:
+            await query.answer(
+                "حدث خطأ أثناء معالجة الدفع",
+                show_alert=True
+            )
+        except Exception:
+            pass
         tx_hash = context.args[0]
 
 
