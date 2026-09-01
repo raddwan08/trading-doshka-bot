@@ -1,6 +1,5 @@
-pycache/
-*.py[cod]
 .env
-*.db
-*.sqlite
-*.log
+*.env
+__pycache__/
+*.pyc
+crypto_bot.db
