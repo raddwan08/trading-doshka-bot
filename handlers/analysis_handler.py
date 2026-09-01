@@ -1,5 +1,10 @@
+# handlers/analysis_handler.py
+
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import (
+    ContextTypes,
+    ConversationHandler
+)
 
 from utils.keyboards import (
     analysis_keyboard,
@@ -18,6 +23,10 @@ import logging
 
 
 logger = logging.getLogger(__name__)
+
+
+WAITING_SYMBOL = 1
+
 
 
 class AnalysisHandler:
@@ -43,7 +52,7 @@ class AnalysisHandler:
         await update.message.reply_text(
 
             "📊 مدارس التحليل\n\n"
-            "اختر مدرسة التحليل:",
+            "اختر نوع التحليل:",
 
             reply_markup=analysis_keyboard()
 
@@ -70,19 +79,19 @@ class AnalysisHandler:
         schools = {
 
             "analysis_wyckoff":
-                "📈 وايكوف",
+                "📈 تحليل وايكوف",
 
             "analysis_harmonic":
-                "🦋 هارمونيك",
+                "🦋 تحليل هارمونيك",
 
             "analysis_classic":
-                "📉 كلاسيكي",
+                "📉 التحليل الكلاسيكي",
 
             "analysis_whales":
-                "🐋 الحيتان",
+                "🐋 تحليل الحيتان",
 
             "analysis_tvl":
-                "🔒 TVL"
+                "🔒 تحليل TVL"
 
         }
 
@@ -106,7 +115,8 @@ class AnalysisHandler:
 
             )
 
-            return
+
+            return WAITING_SYMBOL
 
 
 
@@ -125,6 +135,10 @@ class AnalysisHandler:
             )
 
 
+            return ConversationHandler.END
+
+
+
 
     async def receive_symbol(
         self,
@@ -137,20 +151,23 @@ class AnalysisHandler:
 
 
 
-        # فحص الاشتراك
+        # التحقق من الاشتراك
 
         if not self.db.check_subscription(
             user_id
         ):
 
+
             await update.message.reply_text(
 
-                "🔒 هذه الخدمة للمشتركين فقط\n\n"
+                "🔒 التحليل للمشتركين فقط\n\n"
                 "استخدم /subscribe للاشتراك"
 
             )
 
-            return
+
+            return ConversationHandler.END
+
 
 
 
@@ -169,7 +186,9 @@ class AnalysisHandler:
 
             )
 
-            return
+
+            return ConversationHandler.END
+
 
 
 
@@ -185,8 +204,7 @@ class AnalysisHandler:
 
         await update.message.reply_text(
 
-            "⏳ جاري تحليل "
-            f"{symbol} ..."
+            f"⏳ جاري تحليل {symbol}..."
 
         )
 
@@ -199,7 +217,7 @@ class AnalysisHandler:
 
 
 
-            # TVL له مصدر مختلف
+            # تحليل TVL
 
             if school == "analysis_tvl":
 
@@ -212,6 +230,7 @@ class AnalysisHandler:
                 result = tvl.analyze(
                     tvl_data
                 )
+
 
 
             else:
@@ -234,11 +253,13 @@ class AnalysisHandler:
 
                     await update.message.reply_text(
 
-                        "❌ لم أستطع جلب بيانات العملة"
+                        "❌ لم يتم العثور على بيانات للعملة"
 
                     )
 
-                    return
+
+                    return ConversationHandler.END
+
 
 
 
@@ -271,16 +292,20 @@ class AnalysisHandler:
 
 
 
+
+
             if not result:
 
 
                 await update.message.reply_text(
 
-                    "❌ لم يتم إنشاء تحليل"
+                    "❌ لم يتم إنشاء التحليل"
 
                 )
 
-                return
+
+                return ConversationHandler.END
+
 
 
 
@@ -302,8 +327,6 @@ class AnalysisHandler:
 
 
 
-            # تفاصيل إضافية
-
             if "rsi" in result:
 
                 message += (
@@ -314,7 +337,9 @@ class AnalysisHandler:
                 )
 
 
+
             if "support" in result:
+
 
                 message += (
 
@@ -327,17 +352,21 @@ class AnalysisHandler:
                 )
 
 
+
             if "volume_ratio" in result:
+
 
                 message += (
 
-                    f"\n🐋 قوة الحجم: "
+                    f"\n🐋 نشاط الحيتان: "
                     f"{result['volume_ratio']}x"
 
                 )
 
 
+
             if "pattern" in result and result["pattern"]:
+
 
                 message += (
 
@@ -353,12 +382,18 @@ class AnalysisHandler:
             )
 
 
-            # تنظيف الاختيار بعد التحليل
+
+            # تنظيف الحالة
 
             context.user_data.pop(
                 "analysis_school",
                 None
             )
+
+
+
+            return ConversationHandler.END
+
 
 
 
@@ -375,3 +410,6 @@ class AnalysisHandler:
                 "❌ حدث خطأ أثناء التحليل"
 
             )
+
+
+            return ConversationHandler.END
