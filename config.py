@@ -1,7 +1,10 @@
 import os
 from dotenv import load_dotenv
 
+# ==========================================
 # تحميل متغيرات البيئة
+# ==========================================
+
 load_dotenv()
 
 
@@ -9,7 +12,7 @@ load_dotenv()
 # Telegram Bot
 # ==========================================
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 
 if not BOT_TOKEN:
     raise ValueError(
@@ -24,7 +27,7 @@ if not BOT_TOKEN:
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "sqlite:///crypto_bot.db"
-)
+).strip()
 
 # دعم PostgreSQL في Railway
 if DATABASE_URL.startswith("postgres://"):
@@ -40,9 +43,9 @@ if DATABASE_URL.startswith("postgres://"):
 # ==========================================
 
 WALLETS = {
-    "SOL": os.getenv("SOL_WALLET"),
-    "ETH": os.getenv("ETH_WALLET"),
-    "BSC": os.getenv("BSC_WALLET")
+    "SOL": os.getenv("SOL_WALLET", "").strip(),
+    "ETH": os.getenv("ETH_WALLET", "").strip(),
+    "BSC": os.getenv("BSC_WALLET", "").strip()
 }
 
 
@@ -53,25 +56,25 @@ WALLETS = {
 SUBSCRIPTION_PLANS = {
     "monthly": {
         "duration_days": 30,
-        "price": 25,
+        "price": 25.0,
         "name": "شهري"
     },
 
     "quarterly": {
         "duration_days": 90,
-        "price": 60,
+        "price": 60.0,
         "name": "3 أشهر"
     },
 
     "half_yearly": {
         "duration_days": 180,
-        "price": 100,
+        "price": 100.0,
         "name": "6 أشهر"
     },
 
     "yearly": {
         "duration_days": 365,
-        "price": 180,
+        "price": 180.0,
         "name": "سنوي"
     }
 }
@@ -81,11 +84,20 @@ SUBSCRIPTION_PLANS = {
 # Blockchain RPC URLs
 # ==========================================
 
-ETH_RPC_URL = os.getenv("ETH_RPC_URL")
+ETH_RPC_URL = os.getenv(
+    "ETH_RPC_URL",
+    ""
+).strip()
 
-BSC_RPC_URL = os.getenv("BSC_RPC_URL")
+BSC_RPC_URL = os.getenv(
+    "BSC_RPC_URL",
+    ""
+).strip()
 
-SOL_RPC_URL = os.getenv("SOL_RPC_URL")
+SOL_RPC_URL = os.getenv(
+    "SOL_RPC_URL",
+    ""
+).strip()
 
 
 # ==========================================
@@ -93,8 +105,9 @@ SOL_RPC_URL = os.getenv("SOL_RPC_URL")
 # ==========================================
 
 SOL_USDT_MINT = os.getenv(
-    "SOL_USDT_MINT"
-)
+    "SOL_USDT_MINT",
+    ""
+).strip()
 
 
 # ==========================================
@@ -122,5 +135,5 @@ PAYMENT_TOLERANCE = float(
 
 COINGECKO_API = os.getenv(
     "COINGECKO_API",
-    "https://api.coingecko.com"
-)
+    "https://api.coingecko.com/api/v3"
+).strip()
