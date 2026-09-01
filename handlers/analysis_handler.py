@@ -1,7 +1,9 @@
+# handlers/analysis_handler.py
+
 from telegram import Update
 from telegram.ext import ContextTypes
-
 from utils.keyboards import analysis_keyboard
+from utils.keyboards import main_menu_keyboard
 
 from analysis import (
     wyckoff,
@@ -17,11 +19,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-
 class AnalysisHandler:
 
 
-    def __init__(self, db, crypto_api):
+    def __init__(
+        self,
+        db,
+        crypto_api
+    ):
 
         self.db = db
         self.crypto_api = crypto_api
@@ -37,7 +42,7 @@ class AnalysisHandler:
         await update.message.reply_text(
 
             "📊 مدارس التحليل\n\n"
-            "اختر مدرسة التحليل:",
+            "اختر نوع التحليل:",
 
             reply_markup=analysis_keyboard()
 
@@ -58,41 +63,61 @@ class AnalysisHandler:
 
 
 
+        data = query.data
+
+
+
         schools = {
 
             "analysis_wyckoff":
-                "📈 وايكوف",
+                "📈 تحليل وايكوف",
 
             "analysis_harmonic":
-                "🦋 هارمونيك",
+                "🦋 تحليل هارمونيك",
 
             "analysis_classic":
-                "📉 كلاسيكي",
+                "📉 التحليل الكلاسيكي",
 
             "analysis_whales":
-                "🐋 الحيتان",
+                "🐋 تحليل الحيتان",
 
             "analysis_tvl":
-                "🔒 TVL"
+                "🔒 تحليل TVL"
 
         }
 
 
 
-        if query.data in schools:
+        if data in schools:
 
 
             context.user_data[
-                "selected_school"
-            ] = query.data
+                "analysis_school"
+            ] = data
 
 
 
             await query.edit_message_text(
 
-                f"{schools[query.data]}\n\n"
-                "أرسل رمز العملة:\n"
-                "مثال: BTC"
+                f"{schools[data]}\n\n"
+                "أرسل رمز العملة للتحليل:\n\n"
+                "مثال:\n"
+                "BTC"
+
+            )
+
+            return
+
+
+
+        if data == "back_main":
+
+
+            await query.edit_message_text(
+
+                "🏠 القائمة الرئيسية",
+
+                reply_markup=main_menu_keyboard()
 
             )
 
@@ -105,15 +130,22 @@ class AnalysisHandler:
     ):
 
 
-        symbol = update.message.text.upper()
-
-
-        school = context.user_data.get(
-            "selected_school"
+        symbol = (
+            update.message.text
+            .strip()
+            .upper()
         )
 
 
+
+        school = context.user_data.get(
+            "analysis_school"
+        )
+
+
+
         if not school:
+
 
             await update.message.reply_text(
 
@@ -126,97 +158,148 @@ class AnalysisHandler:
 
 
         await update.message.reply_text(
-            "⏳ جاري التحليل..."
+            "⏳ جاري جلب البيانات والتحليل..."
         )
 
 
 
-        candles = await self.crypto_api.get_klines(
-
-            symbol,
-
-            interval="4h",
-
-            limit=100
-
-        )
+        try:
 
 
+            candles = await self.crypto_api.get_klines(
 
-        if not candles:
+                symbol,
 
-            await update.message.reply_text(
+                interval="4h",
 
-                "❌ لم أستطع جلب بيانات العملة"
+                limit=100
 
             )
 
-            return
 
 
-
-        result = None
-
+            if not candles:
 
 
-        if school == "analysis_wyckoff":
+                await update.message.reply_text(
 
-            result = wyckoff.analyze(
-                candles
-            )
+                    "❌ لا توجد بيانات لهذه العملة"
 
+                )
 
-        elif school == "analysis_harmonic":
-
-            result = harmonic.analyze(
-                candles
-            )
-
-
-        elif school == "analysis_classic":
-
-            result = classic.analyze(
-                candles
-            )
-
-
-        elif school == "analysis_whales":
-
-            result = whales.analyze(
-                candles
-            )
-
-
-        elif school == "analysis_tvl":
-
-
-            tvl_data = await self.crypto_api.get_tvl(
-                symbol
-            )
-
-
-            result = tvl.analyze(
-                tvl_data
-            )
+                return
 
 
 
 
-        if result:
+            result = None
+
+
+
+            if school == "analysis_wyckoff":
+
+                result = wyckoff.analyze(
+                    candles
+                )
+
+
+
+            elif school == "analysis_harmonic":
+
+                result = harmonic.analyze(
+                    candles
+                )
+
+
+
+            elif school == "analysis_classic":
+
+                result = classic.analyze(
+                    candles
+                )
+
+
+
+            elif school == "analysis_whales":
+
+                result = whales.analyze(
+                    candles
+                )
+
+
+
+            elif school == "analysis_tvl":
+
+
+                tvl_data = await self.crypto_api.get_tvl(
+                    symbol
+                )
+
+
+                result = tvl.analyze(
+                    tvl_data
+                )
+
+
+
+
+
+            if not result:
+
+
+                await update.message.reply_text(
+
+                    "❌ لم يتم إنشاء نتيجة"
+
+                )
+
+                return
+
+
 
 
             message = (
 
                 f"📊 نتيجة التحليل\n\n"
 
-                f"🪙 العملة: {symbol}\n\n"
+                f"🪙 العملة: {symbol}\n"
 
-                f"🎯 الإشارة: "
+                f"🏫 المدرسة: {result.get('school','')}\n\n"
+
+                f"🎯 الإشارة:\n"
                 f"{result.get('signal')}\n\n"
 
-                f"{result.get('message')}"
+                f"{result.get('message')}\n"
 
             )
+
+
+
+            # إضافة تفاصيل إضافية إن وجدت
+
+            if "rsi" in result:
+
+                message += (
+                    f"\n📊 RSI: {result['rsi']}"
+                )
+
+
+            if "support" in result:
+
+                message += (
+                    f"\n\n📉 دعم: "
+                    f"{result['support']}"
+                    f"\n📈 مقاومة: "
+                    f"{result['resistance']}"
+                )
+
+
+            if "volume_ratio" in result:
+
+                message += (
+                    f"\n\n🐋 قوة الحجم: "
+                    f"{result['volume_ratio']}x"
+                )
 
 
             await update.message.reply_text(
@@ -224,10 +307,17 @@ class AnalysisHandler:
             )
 
 
-        else:
+
+        except Exception as e:
+
+
+            logger.error(
+                f"Analysis error: {e}"
+            )
+
 
             await update.message.reply_text(
 
-                "❌ لم يتم إنشاء التحليل"
+                "❌ حدث خطأ أثناء التحليل"
 
             )
