@@ -52,7 +52,7 @@ class AnalysisHandler:
         await update.message.reply_text(
 
             "📊 مدارس التحليل\n\n"
-            "اختر نوع التحليل:",
+            "اختر مدرسة التحليل:",
 
             reply_markup=analysis_keyboard()
 
@@ -97,6 +97,8 @@ class AnalysisHandler:
 
 
 
+        # اختيار مدرسة
+
         if data in schools:
 
 
@@ -120,6 +122,29 @@ class AnalysisHandler:
 
 
 
+
+        # إلغاء التحليل
+
+        if data == "analysis_cancel":
+
+
+            context.user_data.clear()
+
+
+            await query.edit_message_text(
+
+                "❌ تم إلغاء التحليل"
+
+            )
+
+
+            return ConversationHandler.END
+
+
+
+
+        # رجوع للقائمة الرئيسية
+
         if data == "back_main":
 
 
@@ -140,6 +165,7 @@ class AnalysisHandler:
 
 
 
+
     async def receive_symbol(
         self,
         update: Update,
@@ -151,7 +177,7 @@ class AnalysisHandler:
 
 
 
-        # التحقق من الاشتراك
+        # فحص الاشتراك
 
         if not self.db.check_subscription(
             user_id
@@ -160,13 +186,14 @@ class AnalysisHandler:
 
             await update.message.reply_text(
 
-                "🔒 التحليل للمشتركين فقط\n\n"
+                "🔒 التحليل متاح للمشتركين فقط\n\n"
                 "استخدم /subscribe للاشتراك"
 
             )
 
 
             return ConversationHandler.END
+
 
 
 
@@ -182,12 +209,13 @@ class AnalysisHandler:
 
             await update.message.reply_text(
 
-                "❌ اختر مدرسة التحليل أولاً"
+                "❌ لم يتم اختيار مدرسة التحليل"
 
             )
 
 
             return ConversationHandler.END
+
 
 
 
@@ -217,7 +245,7 @@ class AnalysisHandler:
 
 
 
-            # تحليل TVL
+            # TVL
 
             if school == "analysis_tvl":
 
@@ -230,6 +258,7 @@ class AnalysisHandler:
                 result = tvl.analyze(
                     tvl_data
                 )
+
 
 
 
@@ -253,7 +282,7 @@ class AnalysisHandler:
 
                     await update.message.reply_text(
 
-                        "❌ لم يتم العثور على بيانات للعملة"
+                        "❌ لا توجد بيانات لهذه العملة"
 
                     )
 
@@ -299,7 +328,7 @@ class AnalysisHandler:
 
                 await update.message.reply_text(
 
-                    "❌ لم يتم إنشاء التحليل"
+                    "❌ فشل إنشاء التحليل"
 
                 )
 
@@ -329,12 +358,14 @@ class AnalysisHandler:
 
             if "rsi" in result:
 
+
                 message += (
 
                     f"\n\n📊 RSI: "
                     f"{result['rsi']}"
 
                 )
+
 
 
 
@@ -353,15 +384,19 @@ class AnalysisHandler:
 
 
 
+
+
             if "volume_ratio" in result:
 
 
                 message += (
 
-                    f"\n🐋 نشاط الحيتان: "
+                    f"\n🐋 قوة الحجم: "
                     f"{result['volume_ratio']}x"
 
                 )
+
+
 
 
 
@@ -377,6 +412,7 @@ class AnalysisHandler:
 
 
 
+
             await update.message.reply_text(
                 message
             )
@@ -389,7 +425,6 @@ class AnalysisHandler:
                 "analysis_school",
                 None
             )
-
 
 
             return ConversationHandler.END
