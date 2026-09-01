@@ -1,28 +1,25 @@
+import asyncio
+import logging
+from datetime import datetime, timezone
+from decimal import Decimal
+
 from telegram import (
     Update,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
 )
-
 from telegram.ext import ContextTypes
 
-from config import WALLETS
-
-import logging
+from config import WALLETS, SUBSCRIPTION_PLANS
 
 
 logger = logging.getLogger(__name__)
 
 
 class PaymentHandler:
-    """
-    مسؤول عن:
-    - عرض شبكات الدفع
-    - اختيار الشبكة
-    - عرض عنوان المحفظة
-    - حفظ الشبكة المختارة للمستخدم
-    - استقبال Transaction Hash للتحقق
-    """
+
+    PAYMENT_TIMEOUT_MINUTES = 30
+    PAYMENT_CHECK_INTERVAL = 20
 
     def __init__(
         self,
@@ -30,13 +27,18 @@ class PaymentHandler:
         application=None,
         blockchain_verifier=None
     ):
+
         self.db = db
         self.application = application
         self.blockchain_verifier = blockchain_verifier
 
+        # حفظ مهام مراقبة الدفع
+        # المفتاح: payment_id
+        # القيمة: asyncio.Task
+        self.payment_tasks = {}
 
     # ==========================================================
-    # عرض خيارات الدفع
+    # عرض خطط الدفع
     # ==========================================================
 
     async def show_payment_options(
@@ -46,83 +48,35 @@ class PaymentHandler:
     ):
 
         message = (
-            "💳 طرق الدفع\n\n"
-            "نقبل USDT على الشبكات التالية:\n\n"
-            "1️⃣ Solana\n"
-            "2️⃣ Ethereum\n"
-            "3️⃣ BSC\n\n"
-            "👇 اختر الشبكة:"
+            "💳 الدفع والاشتراك\n\n"
+            "اختر خطة الاشتراك:"
         )
 
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "🔷 Solana",
-                    callback_data="payment_sol"
-                ),
+        keyboard = []
 
-                InlineKeyboardButton(
-                    "🔶 Ethereum",
-                    callback_data="payment_eth"
-                )
-            ],
+        for plan_id, plan in SUBSCRIPTION_PLANS.items():
 
-            [
-                InlineKeyboardButton(
-                    "🟡 BSC",
-                    callback_data="payment_bsc"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    "🏠 القائمة الرئيسية",
-                    callback_data="back_main"
-                )
-            ]
-        ]
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        try:
-
-            # إذا تم فتح الدفع من أمر /payment
-            if update.message:
-
-                await update.message.reply_text(
-                    message,
-                    reply_markup=reply_markup
-                )
-
-                return
-
-
-            # إذا تم فتح الدفع من زر Callback
-            if update.callback_query:
-
-                query = update.callback_query
-
-                await query.answer()
-
-                await query.edit_message_text(
-                    message,
-                    reply_markup=reply_markup
-                )
-
-                return
-
-
-        except Exception as e:
-
-            logger.exception(
-                f"Error showing payment options: {e}"
+            button_text = (
+                f"💎 {plan['name']} - "
+                f"{plan['price']} USDT"
             )
 
-            raise
+            keyboard.append([
+                InlineKeyboardButton(
+                    button_text,
+                    callback_data=f"payment_plan_{plan_id}"
+                )
+            ])
 
+        await update.message.reply_text(
+            message,
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            )
+        )
 
     # ==========================================================
-    # معالجة اختيار شبكة الدفع
+    # معالجة Callback
     # ==========================================================
 
     async def handle_payment_callback(
@@ -133,158 +87,74 @@ class PaymentHandler:
 
         query = update.callback_query
 
-        if query is None:
-
-            logger.error(
-                "Payment callback called without callback_query"
-            )
-
+        if not query:
             return
 
+        await query.answer()
+
+        data = query.data
 
         try:
 
-            # إيقاف علامة التحميل في Telegram
-            await query.answer()
+            # --------------------------------------------------
+            # اختيار الخطة
+            # --------------------------------------------------
 
-            data = query.data
+            if data.startswith(
+                "payment_plan_"
+            ):
 
-            logger.info(
-                f"Payment callback received: {data}"
-            )
-
-
-            # ربط بيانات الأزرار بالشبكات
-            network_map = {
-
-                "payment_sol": "SOL",
-
-                "payment_eth": "ETH",
-
-                "payment_bsc": "BSC"
-
-            }
-
-
-            network = network_map.get(data)
-
-
-            # التحقق من الشبكة
-            if network is None:
-
-                logger.warning(
-                    f"Unknown payment callback: {data}"
+                plan_id = data.replace(
+                    "payment_plan_",
+                    ""
                 )
 
-                await query.edit_message_text(
-                    "❌ شبكة دفع غير معروفة."
+                await self._select_plan(
+                    query,
+                    context,
+                    plan_id
                 )
 
                 return
 
 
-            # الحصول على المحفظة
-            wallet = WALLETS.get(network)
+            # --------------------------------------------------
+            # اختيار الشبكة
+            # --------------------------------------------------
 
+            if data.startswith(
+                "payment_network_"
+            ):
 
-            logger.info(
-                f"Selected network: {network}"
-            )
+                network = data.replace(
+                    "payment_network_",
+                    ""
+                ).upper()
 
-            logger.info(
-                f"Wallet configured: {bool(wallet)}"
-            )
-
-
-            # التحقق من وجود المحفظة
-            if not wallet:
-
-                await query.edit_message_text(
-                    f"❌ محفظة شبكة {network} غير مهيأة في السيرفر."
+                await self._select_network(
+                    query,
+                    context,
+                    network
                 )
 
                 return
 
 
-            # ==================================================
-            # حفظ الشبكة المختارة للمستخدم
-            # ==================================================
+            # --------------------------------------------------
+            # إلغاء الدفع
+            # --------------------------------------------------
 
-            context.user_data["payment_network"] = network
+            if data == "payment_cancel":
 
+                await query.edit_message_text(
+                    "❌ تم إلغاء عملية الدفع."
+                )
 
-            # ==================================================
-            # أسماء الشبكات للعرض
-            # ==================================================
-
-            network_names = {
-
-                "SOL": "Solana",
-
-                "ETH": "Ethereum (ERC-20)",
-
-                "BSC": "BNB Smart Chain (BEP-20)"
-
-            }
-
-
-            network_name = network_names.get(
-                network,
-                network
-            )
-
-
-            # ==================================================
-            # رسالة الدفع
-            # ==================================================
-
-            message = (
-                f"💳 الدفع عبر {network_name}\n\n"
-                f"💰 العملة: USDT\n"
-                f"🌐 الشبكة: {network_name}\n\n"
-                f"📬 عنوان المحفظة:\n\n"
-                f"<code>{wallet}</code>\n\n"
-                f"⚠️ مهم جداً:\n"
-                f"أرسل USDT على نفس الشبكة فقط.\n\n"
-                f"بعد التحويل أرسل:\n"
-                f"/verify TRANSACTION_HASH"
-            )
-
-
-            # زر الرجوع إلى شبكات الدفع
-            keyboard = [
-
-                [
-                    InlineKeyboardButton(
-                        "🔙 تغيير الشبكة",
-                        callback_data="payment_back"
-                    )
-                ],
-
-                [
-                    InlineKeyboardButton(
-                        "💳 طرق الدفع",
-                        callback_data="payment_options"
-                    )
-                ]
-
-            ]
-
-
-            reply_markup = InlineKeyboardMarkup(
-                keyboard
-            )
+                return
 
 
             await query.edit_message_text(
-                message,
-                parse_mode="HTML",
-                reply_markup=reply_markup
-            )
-
-
-            logger.info(
-                f"Payment information sent successfully: {network}"
+                "❌ أمر دفع غير معروف."
             )
 
 
@@ -294,57 +164,606 @@ class PaymentHandler:
                 f"Payment callback error: {e}"
             )
 
-
             try:
 
-                await query.answer(
-                    "حدث خطأ أثناء معالجة الدفع",
-                    show_alert=True
+                await query.edit_message_text(
+                    "❌ حدث خطأ أثناء معالجة الدفع."
                 )
 
-            except Exception as callback_error:
-
-                logger.error(
-                    f"Could not send callback error: "
-                    f"{callback_error}"
-                )
-
+            except Exception:
+                pass
 
     # ==========================================================
-    # زر تغيير الشبكة / العودة لخيارات الدفع
+    # اختيار الخطة
     # ==========================================================
 
-    async def handle_payment_navigation(
+    async def _select_plan(
         self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE
+        query,
+        context,
+        plan_id
     ):
 
-        query = update.callback_query
+        plan = SUBSCRIPTION_PLANS.get(
+            plan_id
+        )
 
-        if query is None:
+        if not plan:
+
+            await query.edit_message_text(
+                "❌ خطة الاشتراك غير موجودة."
+            )
+
             return
 
 
+        # حفظ الخطة مؤقتاً
+        context.user_data[
+            "payment_plan"
+        ] = plan_id
+
+
+        context.user_data[
+            "payment_plan_data"
+        ] = plan
+
+
+        message = (
+            f"💎 الخطة المختارة: "
+            f"{plan['name']}\n\n"
+            f"💰 السعر: "
+            f"{plan['price']} USDT\n\n"
+            "اختر شبكة الدفع:"
+        )
+
+
+        keyboard = [
+
+            [
+                InlineKeyboardButton(
+                    "🔷 Solana",
+                    callback_data=(
+                        "payment_network_SOL"
+                    )
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🔶 Ethereum",
+                    callback_data=(
+                        "payment_network_ETH"
+                    )
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🟡 BSC",
+                    callback_data=(
+                        "payment_network_BSC"
+                    )
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "❌ إلغاء",
+                    callback_data=(
+                        "payment_cancel"
+                    )
+                )
+            ]
+        ]
+
+
+        await query.edit_message_text(
+            message,
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            )
+        )
+
+    # ==========================================================
+    # اختيار الشبكة وإنشاء الفاتورة
+    # ==========================================================
+
+    async def _select_network(
+        self,
+        query,
+        context,
+        network
+    ):
+
+        # ------------------------------------------------------
+        # التحقق من الخطة
+        # ------------------------------------------------------
+
+        plan_id = context.user_data.get(
+            "payment_plan"
+        )
+
+
+        plan = SUBSCRIPTION_PLANS.get(
+            plan_id
+        )
+
+
+        if not plan:
+
+            await query.edit_message_text(
+                "❌ انتهت جلسة الدفع. "
+                "ابدأ مرة أخرى باستخدام /payment"
+            )
+
+            return
+
+
+        # ------------------------------------------------------
+        # التحقق من الشبكة
+        # ------------------------------------------------------
+
+        if network not in WALLETS:
+
+            await query.edit_message_text(
+                "❌ شبكة غير مدعومة."
+            )
+
+            return
+
+
+        wallet = WALLETS.get(
+            network
+        )
+
+
+        if not wallet:
+
+            await query.edit_message_text(
+                "❌ عنوان المحفظة غير موجود."
+            )
+
+            return
+
+
+        # ------------------------------------------------------
+        # بيانات المستخدم
+        # ------------------------------------------------------
+
+        telegram_user = query.from_user
+
+        telegram_id = (
+            telegram_user.id
+        )
+
+
+        # ------------------------------------------------------
+        # إنشاء مبلغ الدفع
+        # ------------------------------------------------------
+
+        # في الوقت الحالي نستخدم سعر الخطة مباشرة.
+        #
+        # لاحقاً يمكن إضافة مبلغ فريد لكل فاتورة
+        # لمنع اختلاط دفعات مستخدمين مختلفين.
+
+        amount = Decimal(
+            str(plan["price"])
+        )
+
+
+        # ------------------------------------------------------
+        # إنشاء المستخدم إذا لم يكن موجوداً
+        # ------------------------------------------------------
+
+        self.db.get_or_create_user(
+            telegram_id=telegram_id,
+            username=telegram_user.username,
+            first_name=telegram_user.first_name,
+            last_name=telegram_user.last_name
+        )
+
+
+        # ------------------------------------------------------
+        # إنشاء فاتورة معلقة
+        # ------------------------------------------------------
+
+        payment = self.db.create_pending_payment(
+            telegram_id=telegram_id,
+            amount=float(amount),
+            network=network,
+            plan_type=plan_id
+        )
+
+
+        if not payment:
+
+            await query.edit_message_text(
+                "❌ تعذر إنشاء فاتورة الدفع."
+            )
+
+            return
+
+
+        # ------------------------------------------------------
+        # وقت إنشاء الفاتورة
+        # ------------------------------------------------------
+
+        invoice_created_at = datetime.now(
+            timezone.utc
+        )
+
+
+        # ------------------------------------------------------
+        # عرض معلومات الدفع
+        # ------------------------------------------------------
+
+        message = (
+            "💳 فاتورة الدفع\n\n"
+            f"📦 الخطة: {plan['name']}\n"
+            f"💰 المبلغ: {amount} USDT\n"
+            f"🌐 الشبكة: {network}\n\n"
+            "📥 أرسل USDT إلى العنوان التالي:\n\n"
+            f"`{wallet}`\n\n"
+            "⏳ سيتم التحقق من الدفع تلقائياً.\n"
+            "لا ترسل Transaction Hash.\n\n"
+            f"🕒 تنتهي الفاتورة خلال "
+            f"{self.PAYMENT_TIMEOUT_MINUTES} دقيقة."
+        )
+
+
+        keyboard = [
+
+            [
+                InlineKeyboardButton(
+                    "❌ إلغاء الدفع",
+                    callback_data=(
+                        "payment_cancel"
+                    )
+                )
+            ]
+        ]
+
+
+        await query.edit_message_text(
+            message,
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            ),
+            parse_mode="Markdown"
+        )
+
+
+        # ------------------------------------------------------
+        # بدء مراقبة الدفع بالخلفية
+        # ------------------------------------------------------
+
+        if payment.id in self.payment_tasks:
+
+            old_task = self.payment_tasks.get(
+                payment.id
+            )
+
+            if (
+                old_task
+                and not old_task.done()
+            ):
+
+                old_task.cancel()
+
+
+        task = asyncio.create_task(
+
+            self._monitor_payment(
+
+                payment_id=payment.id,
+
+                telegram_id=telegram_id,
+
+                network=network,
+
+                wallet=wallet,
+
+                amount=amount,
+
+                plan_id=plan_id,
+
+                duration_days=plan[
+                    "duration_days"
+                ],
+
+                created_at=invoice_created_at
+
+            )
+        )
+
+
+        self.payment_tasks[
+            payment.id
+        ] = task
+
+
+        logger.info(
+            f"Payment monitor started | "
+            f"Payment={payment.id} | "
+            f"User={telegram_id} | "
+            f"Network={network}"
+        )
+
+    # ==========================================================
+    # مراقبة الدفع
+    # ==========================================================
+
+    async def _monitor_payment(
+        self,
+        payment_id,
+        telegram_id,
+        network,
+        wallet,
+        amount,
+        plan_id,
+        duration_days,
+        created_at
+    ):
+
         try:
 
-            await query.answer()
+            if not self.blockchain_verifier:
 
-            await self.show_payment_options(
-                update,
-                context
+                logger.error(
+                    "BlockchainVerifier is not configured"
+                )
+
+                return
+
+
+            # --------------------------------------------------
+            # مراقبة البلوكشين
+            # --------------------------------------------------
+
+            result = (
+                await self.blockchain_verifier.wait_for_payment(
+
+                    network=network,
+
+                    wallet=wallet,
+
+                    expected_amount=amount,
+
+                    created_at=created_at,
+
+                    timeout_minutes=(
+                        self.PAYMENT_TIMEOUT_MINUTES
+                    ),
+
+                    check_interval=(
+                        self.PAYMENT_CHECK_INTERVAL
+                    )
+                )
             )
+
+
+            # --------------------------------------------------
+            # تم العثور على الدفع
+            # --------------------------------------------------
+
+            if result.get(
+                "found"
+            ):
+
+                tx_hash = result.get(
+                    "tx_hash"
+                )
+
+
+                if not tx_hash:
+
+                    logger.error(
+                        "Payment found but transaction "
+                        "hash is missing"
+                    )
+
+                    return
+
+
+                # ----------------------------------------------
+                # تأكيد الدفع
+                # ----------------------------------------------
+
+                payment = (
+                    self.db.complete_payment(
+
+                        payment_id=payment_id,
+
+                        transaction_hash=tx_hash
+                    )
+                )
+
+
+                if not payment:
+
+                    await self.application.bot.send_message(
+
+                        chat_id=telegram_id,
+
+                        text=(
+                            "⚠️ تم العثور على الدفع، "
+                            "لكن لم يتم تأكيده بسبب مشكلة "
+                            "داخل النظام.\n\n"
+                            "يرجى التواصل مع الدعم."
+                        )
+                    )
+
+                    return
+
+
+                # ----------------------------------------------
+                # تفعيل الاشتراك
+                # ----------------------------------------------
+
+                activated = (
+                    self.db.activate_subscription(
+
+                        telegram_id=telegram_id,
+
+                        plan_type=plan_id,
+
+                        duration_days=duration_days
+                    )
+                )
+
+
+                if not activated:
+
+                    logger.error(
+                        f"Failed to activate "
+                        f"subscription for "
+                        f"{telegram_id}"
+                    )
+
+
+                    await self.application.bot.send_message(
+
+                        chat_id=telegram_id,
+
+                        text=(
+                            "⚠️ تم تأكيد الدفع، "
+                            "لكن حدث خطأ أثناء تفعيل "
+                            "الاشتراك.\n\n"
+                            "يرجى التواصل مع الدعم."
+                        )
+                    )
+
+                    return
+
+
+                # ----------------------------------------------
+                # إرسال النجاح
+                # ----------------------------------------------
+
+                await self.application.bot.send_message(
+
+                    chat_id=telegram_id,
+
+                    text=(
+                        "✅ تم استلام الدفع بنجاح!\n\n"
+                        "🎉 تم تفعيل اشتراكك.\n\n"
+                        f"📦 الخطة: {plan_id}\n"
+                        f"🌐 الشبكة: {network}\n"
+                        f"💰 المبلغ: "
+                        f"{result.get('amount')} USDT\n\n"
+                        "شكراً لاشتراكك 💎"
+                    )
+                )
+
+
+                logger.info(
+                    f"Payment completed | "
+                    f"User={telegram_id} | "
+                    f"Payment={payment_id} | "
+                    f"TX={tx_hash}"
+                )
+
+
+                return
+
+
+            # --------------------------------------------------
+            # انتهت الفاتورة
+            # --------------------------------------------------
+
+            status = result.get(
+                "status"
+            )
+
+
+            if status == "expired":
+
+                self.db.expire_payment(
+                    payment_id
+                )
+
+
+                await self.application.bot.send_message(
+
+                    chat_id=telegram_id,
+
+                    text=(
+                        "⌛ انتهت صلاحية فاتورة الدفع.\n\n"
+                        "لم يتم العثور على الدفع خلال "
+                        f"{self.PAYMENT_TIMEOUT_MINUTES} دقيقة.\n\n"
+                        "يمكنك إنشاء فاتورة جديدة "
+                        "باستخدام /payment"
+                    )
+                )
+
+
+            elif status == "error":
+
+                logger.error(
+                    f"Blockchain error: {result}"
+                )
+
+
+                await self.application.bot.send_message(
+
+                    chat_id=telegram_id,
+
+                    text=(
+                        "⚠️ حدث خطأ أثناء التحقق من "
+                        "شبكة البلوكشين.\n\n"
+                        "لم يتم تأكيد أي عملية دفع.\n"
+                        "يرجى المحاولة لاحقاً."
+                    )
+                )
+
+
+        except asyncio.CancelledError:
+
+            logger.info(
+                f"Payment monitor cancelled: "
+                f"{payment_id}"
+            )
+
+            raise
 
 
         except Exception as e:
 
             logger.exception(
-                f"Payment navigation error: {e}"
+                f"Payment monitor error: {e}"
             )
 
 
+            try:
+
+                await self.application.bot.send_message(
+
+                    chat_id=telegram_id,
+
+                    text=(
+                        "⚠️ حدث خطأ أثناء مراقبة "
+                        "عملية الدفع."
+                    )
+                )
+
+            except Exception:
+
+                pass
+
+
+        finally:
+
+            # إزالة المهمة من الذاكرة
+
+            if payment_id in self.payment_tasks:
+
+                self.payment_tasks.pop(
+                    payment_id,
+                    None
+                )
+
     # ==========================================================
-    # التحقق من الدفع
+    # توافق مع /verify القديم
     # ==========================================================
 
     async def verify_payment(
@@ -353,128 +772,22 @@ class PaymentHandler:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        try:
-
-            # التحقق من وجود Transaction Hash
-            if not context.args:
-
-                await update.message.reply_text(
-                    "❌ لم ترسل Transaction Hash.\n\n"
-                    "استخدم الأمر بهذا الشكل:\n\n"
-                    "<code>/verify TRANSACTION_HASH</code>",
-                    parse_mode="HTML"
-                )
-
-                return
-
-
-            # أخذ الهاش
-            tx_hash = context.args[0].strip()
-
-
-            # الشبكة التي اختارها المستخدم
-            network = context.user_data.get(
-                "payment_network"
-            )
-
-
-            # إذا لم يختر المستخدم شبكة
-            if not network:
-
-                await update.message.reply_text(
-                    "❌ يجب اختيار شبكة الدفع أولاً.\n\n"
-                    "استخدم:\n"
-                    "/payment"
-                )
-
-                return
-
-
-            # التحقق من وجود المحفظة
-            wallet = WALLETS.get(network)
-
-
-            if not wallet:
-
-                await update.message.reply_text(
-                    f"❌ محفظة {network} غير مهيأة."
-                )
-
-                return
-
-
-            # رسالة انتظار
-            await update.message.reply_text(
-                "⏳ جاري التحقق من المعاملة...\n\n"
-                f"🌐 الشبكة: {network}\n"
-                f"🔗 المعاملة:\n"
-                f"<code>{tx_hash}</code>",
-                parse_mode="HTML"
-            )
-
-
-            logger.info(
-                f"Payment verification requested | "
-                f"Network: {network} | "
-                f"User: {update.effective_user.id}"
-            )
-
-
-            # ==================================================
-            # التحقق الفعلي
-            # ==================================================
-
-            if self.blockchain_verifier is None:
-
-                logger.warning(
-                    "BlockchainVerifier is not configured"
-                )
-
-                await update.message.reply_text(
-                    "⚠️ تم استلام المعاملة، "
-                    "لكن خدمة التحقق غير مهيأة حالياً."
-                )
-
-                return
-
-
-            # في الوقت الحالي لا نفترض اسم الدالة
-            # لأننا لم نر ملف blockchain_verifier.py بعد.
-            #
-            # سيتم ربط التحقق الحقيقي هنا بعد مراجعة الملف.
-
-
-            await update.message.reply_text(
-                "✅ تم استلام Transaction Hash.\n\n"
-                "سيتم التحقق من المعاملة على الشبكة المختارة."
-            )
-
-
-        except Exception as e:
-
-            logger.exception(
-                f"Payment verification error: {e}"
-            )
-
-
-            await update.message.reply_text(
-                "❌ حدث خطأ أثناء التحقق من المعاملة."
-            )
-
+        await update.message.reply_text(
+            "🤖 التحقق أصبح تلقائياً.\n\n"
+            "بعد إرسال USDT إلى العنوان المطلوب، "
+            "سيقوم البوت بالتحقق من الدفع "
+            "وتفعيل الاشتراك تلقائياً.\n\n"
+            "لا تحتاج إلى إرسال Transaction Hash."
+        )
 
     # ==========================================================
-    # الحصول على عنوان المحفظة
+    # الحصول على المحفظة
     # ==========================================================
 
     def get_wallet(
         self,
-        network: str
+        network
     ):
-
-        if not network:
-
-            return None
-
 
         return WALLETS.get(
             network.upper()
