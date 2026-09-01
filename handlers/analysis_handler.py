@@ -1,9 +1,10 @@
-# handlers/analysis_handler.py
-
 from telegram import Update
 from telegram.ext import ContextTypes
-from utils.keyboards import analysis_keyboard
-from utils.keyboards import main_menu_keyboard
+
+from utils.keyboards import (
+    analysis_keyboard,
+    main_menu_keyboard
+)
 
 from analysis import (
     wyckoff,
@@ -42,7 +43,7 @@ class AnalysisHandler:
         await update.message.reply_text(
 
             "📊 مدارس التحليل\n\n"
-            "اختر نوع التحليل:",
+            "اختر مدرسة التحليل:",
 
             reply_markup=analysis_keyboard()
 
@@ -62,7 +63,6 @@ class AnalysisHandler:
         await query.answer()
 
 
-
         data = query.data
 
 
@@ -70,19 +70,19 @@ class AnalysisHandler:
         schools = {
 
             "analysis_wyckoff":
-                "📈 تحليل وايكوف",
+                "📈 وايكوف",
 
             "analysis_harmonic":
-                "🦋 تحليل هارمونيك",
+                "🦋 هارمونيك",
 
             "analysis_classic":
-                "📉 التحليل الكلاسيكي",
+                "📉 كلاسيكي",
 
             "analysis_whales":
-                "🐋 تحليل الحيتان",
+                "🐋 الحيتان",
 
             "analysis_tvl":
-                "🔒 تحليل TVL"
+                "🔒 TVL"
 
         }
 
@@ -100,7 +100,7 @@ class AnalysisHandler:
             await query.edit_message_text(
 
                 f"{schools[data]}\n\n"
-                "أرسل رمز العملة للتحليل:\n\n"
+                "🪙 أرسل رمز العملة:\n\n"
                 "مثال:\n"
                 "BTC"
 
@@ -111,6 +111,9 @@ class AnalysisHandler:
 
 
         if data == "back_main":
+
+
+            context.user_data.clear()
 
 
             await query.edit_message_text(
@@ -130,11 +133,24 @@ class AnalysisHandler:
     ):
 
 
-        symbol = (
-            update.message.text
-            .strip()
-            .upper()
-        )
+        user_id = update.effective_user.id
+
+
+
+        # فحص الاشتراك
+
+        if not self.db.check_subscription(
+            user_id
+        ):
+
+            await update.message.reply_text(
+
+                "🔒 هذه الخدمة للمشتركين فقط\n\n"
+                "استخدم /subscribe للاشتراك"
+
+            )
+
+            return
 
 
 
@@ -157,8 +173,21 @@ class AnalysisHandler:
 
 
 
+        symbol = (
+
+            update.message.text
+            .strip()
+            .upper()
+
+        )
+
+
+
         await update.message.reply_text(
-            "⏳ جاري جلب البيانات والتحليل..."
+
+            "⏳ جاري تحليل "
+            f"{symbol} ..."
+
         )
 
 
@@ -166,69 +195,13 @@ class AnalysisHandler:
         try:
 
 
-            candles = await self.crypto_api.get_klines(
-
-                symbol,
-
-                interval="4h",
-
-                limit=100
-
-            )
-
-
-
-            if not candles:
-
-
-                await update.message.reply_text(
-
-                    "❌ لا توجد بيانات لهذه العملة"
-
-                )
-
-                return
-
-
-
-
             result = None
 
 
 
-            if school == "analysis_wyckoff":
+            # TVL له مصدر مختلف
 
-                result = wyckoff.analyze(
-                    candles
-                )
-
-
-
-            elif school == "analysis_harmonic":
-
-                result = harmonic.analyze(
-                    candles
-                )
-
-
-
-            elif school == "analysis_classic":
-
-                result = classic.analyze(
-                    candles
-                )
-
-
-
-            elif school == "analysis_whales":
-
-                result = whales.analyze(
-                    candles
-                )
-
-
-
-            elif school == "analysis_tvl":
+            if school == "analysis_tvl":
 
 
                 tvl_data = await self.crypto_api.get_tvl(
@@ -241,6 +214,60 @@ class AnalysisHandler:
                 )
 
 
+            else:
+
+
+                candles = await self.crypto_api.get_klines(
+
+                    symbol,
+
+                    interval="4h",
+
+                    limit=100
+
+                )
+
+
+
+                if not candles:
+
+
+                    await update.message.reply_text(
+
+                        "❌ لم أستطع جلب بيانات العملة"
+
+                    )
+
+                    return
+
+
+
+                if school == "analysis_wyckoff":
+
+                    result = wyckoff.analyze(
+                        candles
+                    )
+
+
+                elif school == "analysis_harmonic":
+
+                    result = harmonic.analyze(
+                        candles
+                    )
+
+
+                elif school == "analysis_classic":
+
+                    result = classic.analyze(
+                        candles
+                    )
+
+
+                elif school == "analysis_whales":
+
+                    result = whales.analyze(
+                        candles
+                    )
 
 
 
@@ -249,7 +276,7 @@ class AnalysisHandler:
 
                 await update.message.reply_text(
 
-                    "❌ لم يتم إنشاء نتيجة"
+                    "❌ لم يتم إنشاء تحليل"
 
                 )
 
@@ -257,53 +284,80 @@ class AnalysisHandler:
 
 
 
-
             message = (
 
-                f"📊 نتيجة التحليل\n\n"
+                "📊 Doshka Trading Pro\n\n"
 
                 f"🪙 العملة: {symbol}\n"
 
-                f"🏫 المدرسة: {result.get('school','')}\n\n"
+                f"🏫 المدرسة: "
+                f"{result.get('school','')}\n\n"
 
-                f"🎯 الإشارة:\n"
-                f"{result.get('signal')}\n\n"
+                f"🎯 الإشارة: "
+                f"{result.get('signal','WAIT')}\n\n"
 
-                f"{result.get('message')}\n"
+                f"{result.get('message','')}"
 
             )
 
 
 
-            # إضافة تفاصيل إضافية إن وجدت
+            # تفاصيل إضافية
 
             if "rsi" in result:
 
                 message += (
-                    f"\n📊 RSI: {result['rsi']}"
+
+                    f"\n\n📊 RSI: "
+                    f"{result['rsi']}"
+
                 )
 
 
             if "support" in result:
 
                 message += (
-                    f"\n\n📉 دعم: "
+
+                    f"\n📉 الدعم: "
                     f"{result['support']}"
-                    f"\n📈 مقاومة: "
+
+                    f"\n📈 المقاومة: "
                     f"{result['resistance']}"
+
                 )
 
 
             if "volume_ratio" in result:
 
                 message += (
-                    f"\n\n🐋 قوة الحجم: "
+
+                    f"\n🐋 قوة الحجم: "
                     f"{result['volume_ratio']}x"
+
                 )
+
+
+            if "pattern" in result and result["pattern"]:
+
+                message += (
+
+                    f"\n🦋 النموذج: "
+                    f"{result['pattern']}"
+
+                )
+
 
 
             await update.message.reply_text(
                 message
+            )
+
+
+            # تنظيف الاختيار بعد التحليل
+
+            context.user_data.pop(
+                "analysis_school",
+                None
             )
 
 
