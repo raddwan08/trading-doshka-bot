@@ -49,8 +49,13 @@ class AnalysisHandler:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-        await update.message.reply_text(
+       message = update.effective_message
 
+message = update.effective_message
+
+await message.reply_text(
+    "..."
+)
             "📊 مدارس التحليل\n\n"
             "اختر مدرسة التحليل:",
 
