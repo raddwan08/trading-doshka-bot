@@ -182,7 +182,10 @@ class CryptoAnalysisBot:
             )
     
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        logger.error(f"Error: {context.error}")
+        logger.exception(
+    "Unhandled exception",
+    exc_info=context.error
+)
         try:
             if update and update.effective_message:
                 await update.effective_message.reply_text(
