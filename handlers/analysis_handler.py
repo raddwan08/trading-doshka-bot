@@ -1,10 +1,7 @@
 # handlers/analysis_handler.py
 
 from telegram import Update
-from telegram.ext import (
-    ContextTypes,
-    ConversationHandler
-)
+from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.keyboards import (
     analysis_keyboard,
@@ -28,19 +25,15 @@ logger = logging.getLogger(__name__)
 WAITING_SYMBOL = 1
 
 
-
 class AnalysisHandler:
-
 
     def __init__(
         self,
         db,
         crypto_api
     ):
-
         self.db = db
         self.crypto_api = crypto_api
-
 
 
     async def show_analysis_menu(
@@ -49,20 +42,13 @@ class AnalysisHandler:
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-       message = update.effective_message
+        message = update.effective_message
 
-message = update.effective_message
-
-await message.reply_text(
-    "..."
-)
+        await message.reply_text(
             "📊 مدارس التحليل\n\n"
             "اختر مدرسة التحليل:",
-
             reply_markup=analysis_keyboard()
-
         )
-
 
 
     async def handle_analysis_callback(
@@ -71,14 +57,11 @@ await message.reply_text(
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-
         query = update.callback_query
 
         await query.answer()
 
-
         data = query.data
-
 
 
         schools = {
@@ -101,17 +84,9 @@ await message.reply_text(
         }
 
 
-
-        # اختيار مدرسة
-
         if data in schools:
 
-
-            context.user_data[
-                "analysis_school"
-            ] = data
-
-
+            context.user_data["analysis_school"] = data
 
             await query.edit_message_text(
 
@@ -122,52 +97,32 @@ await message.reply_text(
 
             )
 
-
             return WAITING_SYMBOL
 
 
 
-
-        # إلغاء التحليل
-
         if data == "analysis_cancel":
-
 
             context.user_data.clear()
 
-
             await query.edit_message_text(
-
                 "❌ تم إلغاء التحليل"
-
             )
-
 
             return ConversationHandler.END
 
 
-
-
-        # رجوع للقائمة الرئيسية
 
         if data == "back_main":
 
-
             context.user_data.clear()
 
-
             await query.edit_message_text(
-
                 "🏠 القائمة الرئيسية",
-
                 reply_markup=main_menu_keyboard()
-
             )
 
-
             return ConversationHandler.END
-
-
 
 
 
@@ -177,29 +132,17 @@ await message.reply_text(
         context: ContextTypes.DEFAULT_TYPE
     ):
 
-
         user_id = update.effective_user.id
 
 
-
-        # فحص الاشتراك
-
-        if not self.db.check_subscription(
-            user_id
-        ):
-
+        if not self.db.check_subscription(user_id):
 
             await update.message.reply_text(
-
                 "🔒 التحليل متاح للمشتركين فقط\n\n"
                 "استخدم /subscribe للاشتراك"
-
             )
 
-
             return ConversationHandler.END
-
-
 
 
 
@@ -208,92 +151,60 @@ await message.reply_text(
         )
 
 
-
         if not school:
 
-
             await update.message.reply_text(
-
                 "❌ لم يتم اختيار مدرسة التحليل"
-
             )
-
 
             return ConversationHandler.END
 
 
 
-
-
         symbol = (
-
             update.message.text
             .strip()
             .upper()
-
         )
-
 
 
         await update.message.reply_text(
-
             f"⏳ جاري تحليل {symbol}..."
-
         )
-
 
 
         try:
 
-
             result = None
 
 
-
-            # TVL
-
             if school == "analysis_tvl":
-
 
                 tvl_data = await self.crypto_api.get_tvl(
                     symbol
                 )
-
 
                 result = tvl.analyze(
                     tvl_data
                 )
 
 
-
-
             else:
 
-
                 candles = await self.crypto_api.get_klines(
-
                     symbol,
-
                     interval="4h",
-
                     limit=100
-
                 )
-
 
 
                 if not candles:
 
-
                     await update.message.reply_text(
-
                         "❌ لا توجد بيانات لهذه العملة"
-
                     )
 
-
                     return ConversationHandler.END
-
 
 
 
@@ -326,105 +237,60 @@ await message.reply_text(
 
 
 
-
-
             if not result:
 
-
                 await update.message.reply_text(
-
                     "❌ فشل إنشاء التحليل"
-
                 )
 
-
                 return ConversationHandler.END
-
 
 
 
             message = (
 
                 "📊 Doshka Trading Pro\n\n"
-
                 f"🪙 العملة: {symbol}\n"
-
-                f"🏫 المدرسة: "
-                f"{result.get('school','')}\n\n"
-
-                f"🎯 الإشارة: "
-                f"{result.get('signal','WAIT')}\n\n"
-
+                f"🏫 المدرسة: {result.get('school','')}\n\n"
+                f"🎯 الإشارة: {result.get('signal','WAIT')}\n\n"
                 f"{result.get('message','')}"
 
             )
 
 
-
             if "rsi" in result:
 
-
                 message += (
-
-                    f"\n\n📊 RSI: "
-                    f"{result['rsi']}"
-
+                    f"\n\n📊 RSI: {result['rsi']}"
                 )
-
-
 
 
             if "support" in result:
 
-
                 message += (
-
-                    f"\n📉 الدعم: "
-                    f"{result['support']}"
-
-                    f"\n📈 المقاومة: "
-                    f"{result['resistance']}"
-
+                    f"\n📉 الدعم: {result['support']}"
+                    f"\n📈 المقاومة: {result['resistance']}"
                 )
-
-
-
 
 
             if "volume_ratio" in result:
 
-
                 message += (
-
-                    f"\n🐋 قوة الحجم: "
-                    f"{result['volume_ratio']}x"
-
+                    f"\n🐋 قوة الحجم: {result['volume_ratio']}x"
                 )
-
-
-
 
 
             if "pattern" in result and result["pattern"]:
 
-
                 message += (
-
-                    f"\n🦋 النموذج: "
-                    f"{result['pattern']}"
-
+                    f"\n🦋 النموذج: {result['pattern']}"
                 )
-
-
 
 
             await update.message.reply_text(
                 message
             )
 
-
-
-            # تنظيف الحالة
 
             context.user_data.pop(
                 "analysis_school",
@@ -436,20 +302,14 @@ await message.reply_text(
 
 
 
-
         except Exception as e:
-
 
             logger.error(
                 f"Analysis error: {e}"
             )
 
-
             await update.message.reply_text(
-
                 "❌ حدث خطأ أثناء التحليل"
-
             )
-
 
             return ConversationHandler.END
