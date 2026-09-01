@@ -1,93 +1,214 @@
 import aiohttp
 import logging
-import json
+
 
 logger = logging.getLogger(__name__)
 
+
 class CryptoAPI:
+
+
     def __init__(self):
-        self.session = None
-        self.base_url = "https://api.binance.com"
-    
-    async def get_session(self):
-        if not self.session:
-            self.session = aiohttp.ClientSession()
-        return self.session
-    
-    async def close_session(self):
-        if self.session:
-            await self.session.close()
-    
-    async def get_coin_data(self, symbol):
+
+        self.binance_url = (
+            "https://api.binance.com/api/v3"
+        )
+
+        self.coingecko_url = (
+            "https://api.coingecko.com/api/v3"
+        )
+
+
+
+    async def get_klines(
+        self,
+        symbol,
+        interval="4h",
+        limit=100
+    ):
+
+        """
+        جلب شموع Binance
+        """
+
+        symbol = symbol.upper() + "USDT"
+
+
+        url = (
+            f"{self.binance_url}/klines"
+            f"?symbol={symbol}"
+            f"&interval={interval}"
+            f"&limit={limit}"
+        )
+
+
         try:
-            session = await self.get_session()
-            symbol = symbol.upper().strip()
-            
-            # محاولة جلب البيانات من Binance
-            url = f"{self.base_url}/api/v3/ticker/24hr"
-            params = {'symbol': f"{symbol}USDT"}
-            
-            async with session.get(url, params=params) as response:
-                if response.status == 200:
+
+            async with aiohttp.ClientSession() as session:
+
+                async with session.get(url) as response:
+
+
                     data = await response.json()
-                    
-                    return {
-                        "name": symbol,
-                        "symbol": symbol,
-                        "current_price": float(data.get('lastPrice', 0)),
-                        "market_cap": 0,
-                        "price_change_24h": float(data.get('priceChangePercent', 0)),
-                        "volume_24h": float(data.get('volume', 0)),
-                        "high_24h": float(data.get('highPrice', 0)),
-                        "low_24h": float(data.get('lowPrice', 0))
-                    }
-            
-            # إذا فشل Binance، جرب CoinGecko
-            url2 = f"https://api.coingecko.com/api/v3/simple/price"
-            params2 = {
-                'ids': symbol.lower(),
-                'vs_currencies': 'usd',
-                'include_market_cap': 'true',
-                'include_24hr_change': 'true'
-            }
-            
-            async with session.get(url2, params=params2) as response2:
-                if response2.status == 200:
-                    data2 = await response2.json()
-                    coin_data = data2.get(symbol.lower(), {})
-                    
-                    if coin_data:
-                        return {
-                            "name": symbol,
-                            "symbol": symbol,
-                            "current_price": coin_data.get('usd', 0),
-                            "market_cap": coin_data.get('usd_market_cap', 0),
-                            "price_change_24h": coin_data.get('usd_24h_change', 0),
-                            "volume_24h": 0
-                        }
-            
-            # قائمة العملات المعروفة كاحتياط
-            known_prices = {
-                "BTC": 65000, "ETH": 3500, "BNB": 580, "SOL": 150,
-                "XRP": 0.5, "ADA": 0.45, "DOGE": 0.15, "AVAX": 35,
-                "DOT": 7, "LINK": 15, "MATIC": 0.8, "SEI": 0.4
-            }
-            
-            if symbol in known_prices:
-                return {
-                    "name": symbol,
-                    "symbol": symbol,
-                    "current_price": known_prices[symbol],
-                    "market_cap": 0,
-                    "price_change_24h": 0,
-                    "volume_24h": 0
-                }
-            
-            return None
+
+
+
+            candles = []
+
+
+            for item in data:
+
+
+                candles.append({
+
+                    "open":
+                        float(item[1]),
+
+                    "high":
+                        float(item[2]),
+
+                    "low":
+                        float(item[3]),
+
+                    "close":
+                        float(item[4]),
+
+                    "volume":
+                        float(item[5])
+
+                })
+
+
+
+            return candles
+
+
+
         except Exception as e:
-            logger.error(f"Error fetching {symbol}: {e}")
+
+            logger.error(
+                f"Binance error: {e}"
+            )
+
+            return []
+
+
+
+
+    async def get_coin_data(
+        self,
+        symbol
+    ):
+
+
+        """
+        معلومات السعر
+        """
+
+
+        ids = {
+
+            "BTC":
+                "bitcoin",
+
+            "ETH":
+                "ethereum",
+
+            "BNB":
+                "binancecoin",
+
+            "SOL":
+                "solana"
+
+        }
+
+
+        coin_id = ids.get(
+            symbol.upper()
+        )
+
+
+        if not coin_id:
+
             return None
-    
-    async def get_current_price(self, symbol):
-        data = await self.get_coin_data(symbol)
-        return data.get('current_price') if data else None
+
+
+
+        url = (
+
+            f"{self.coingecko_url}/simple/price"
+
+            f"?ids={coin_id}"
+
+            "&vs_currencies=usd"
+
+            "&include_24hr_change=true"
+
+        )
+
+
+
+        try:
+
+            async with aiohttp.ClientSession() as session:
+
+                async with session.get(url) as response:
+
+                    data = await response.json()
+
+
+
+            coin = data[coin_id]
+
+
+            return {
+
+                "name":
+                    symbol.upper(),
+
+                "symbol":
+                    symbol.upper(),
+
+                "current_price":
+                    coin["usd"],
+
+                "price_change_24h":
+                    coin.get(
+                        "usd_24h_change",
+                        0
+                    )
+
+            }
+
+
+
+        except Exception as e:
+
+
+            logger.error(
+                f"CoinGecko error: {e}"
+            )
+
+            return None
+
+
+
+
+    async def get_tvl(
+        self,
+        symbol
+    ):
+
+        """
+        نسخة أولية لـ TVL
+        لاحقاً تربط مع DeFiLlama
+        """
+
+
+        return {
+
+            "tvl": 0,
+
+            "tvl_change_30d": 0
+
+        }
