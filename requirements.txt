@@ -5,3 +5,5 @@ aiohttp==3.9.1
 requests==2.31.0
 web3==6.14.0
 psycopg2-binary==2.9.9
+python-telegram-bot[job-queue]
+aiohttp
