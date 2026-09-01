@@ -19,8 +19,8 @@ def main_menu_keyboard():
                 callback_data="alerts_menu"
             ),
             InlineKeyboardButton(
-                "💳 الدفع",
-                callback_data="payment_menu"
+                "💳 الاشتراك",
+                callback_data="subscribe_menu"
             )
         ],
         [
@@ -34,18 +34,39 @@ def main_menu_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 
+
 def analysis_keyboard():
     keyboard = [
+
         [
             InlineKeyboardButton(
-                "📈 تحليل فني",
-                callback_data="analysis_technical"
+                "📈 وايكوف",
+                callback_data="analysis_wyckoff"
             ),
             InlineKeyboardButton(
-                "⛓️ On-Chain",
-                callback_data="analysis_onchain"
+                "🦋 هارمونيك",
+                callback_data="analysis_harmonic"
             )
         ],
+
+        [
+            InlineKeyboardButton(
+                "📉 كلاسيكي",
+                callback_data="analysis_classic"
+            ),
+            InlineKeyboardButton(
+                "🐋 الحيتان",
+                callback_data="analysis_whales"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "🔒 TVL",
+                callback_data="analysis_tvl"
+            )
+        ],
+
         [
             InlineKeyboardButton(
                 "🔙 رجوع",
