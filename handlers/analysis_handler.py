@@ -11,7 +11,9 @@ logger = logging.getLogger(name)
 WAITING_SYMBOL = 1
 
 class AnalysisHandler:
-def init(self, db, crypto_api):
+    def __init__(self, db, crypto_api):
+        self.db = db
+        self.crypto_api = crypto_api
 self.db = db
 self.crypto_api = crypto_api
 
