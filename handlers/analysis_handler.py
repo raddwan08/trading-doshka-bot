@@ -3,29 +3,29 @@ import logging
 
 from telegram import Update
 from telegram.ext import (
-ContextTypes,
-ConversationHandler
+    ContextTypes,
+    ConversationHandler
 )
 
 from utils.keyboards import (
-analysis_keyboard,
-main_menu_keyboard
+    analysis_keyboard,
+    main_menu_keyboard
 )
 
 from analysis import (
-wyckoff,
-harmonic,
-classic,
-whales,
-tvl
+    wyckoff,
+    harmonic,
+    classic,
+    whales,
+    tvl
 )
 
-logger = logging.getLogger(name)
 
-حالة انتظار رمز العملة
+logger = logging.getLogger(__name__)
 
+
+# حالة انتظار رمز العملة
 WAITING_SYMBOL = 1
-
 class AnalysisHandler:
 
 def __init__(
