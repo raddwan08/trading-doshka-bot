@@ -294,54 +294,62 @@ async def select_subscription(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+    query = update.callback_query
+
+    if query is None:
+        return
+
+    await query.answer()
+
+    plans = {
+        "subscribe_1m": ("📅 اشتراك شهر", 20),
+        "subscribe_3m": ("💎 اشتراك 3 أشهر", 50),
+        "subscribe_6m": ("👑 اشتراك 6 أشهر", 75),
+        "subscribe_1y": ("🏆 اشتراك سنة", 125),
+    }
+
+    plan = plans.get(query.data)
+
+    if not plan:
+        return
+
+    plan_name, price = plan
+
+    context.user_data["selected_plan"] = query.data
+    context.user_data["selected_price"] = price
+
+    await query.edit_message_text(
+        f"{plan_name}\n\n"
+        f"💰 السعر: {price} USDT\n\n"
+        "اختر شبكة الدفع:",
+        reply_markup=payment_network_keyboard()
+        
+    )# ==================================================
+# PAYMENT
+# ==================================================
+
+async def payment_menu(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     query = update.callback_query
 
     await query.answer()
 
-
-    plans = {
-
-        "subscribe_1m": (
-            "📅 اشتراك شهر",
-            "$20"
-        ),
-
-        "subscribe_3m": (
-            "💎 اشتراك 3 أشهر",
-            "$50"
-        ),
-
-        "subscribe_6m": (
-            "👑 اشتراك 6 أشهر",
-            "$75"
-        ),
-
-        "subscribe_1y": (
-            "🏆 اشتراك سنة",
-            "$125"
-        )
-    }
-
-
-    plan = plans.get(query.data)
-
-
-    if not plan:
-
-        return
-
-
-    plan_name, price = plan
-
-
     await query.edit_message_text(
-
-        f"{plan_name}\n\n"
-        f"💰 السعر: {price}\n\n"
-        "سيتم هنا عرض خيارات الدفع "
-        "SOL / ETH / BNB."
+        "💳 طرق الدفع:\n\n"
+        "🟣 SOL:\n"
+        "ضع محفظة SOL هنا\n\n"
+        "🔵 ETH:\n"
+        "ضع محفظة ETH هنا\n\n"
+        "🟡 BNB:\n"
+        "ضع محفظة BNB هنا\n\n"
+        "بعد الدفع أرسل Transaction Hash"
     )
+
+
+# 
 
 
 # ==================================================
@@ -550,7 +558,16 @@ def main():
             select_subscription,
             pattern="^subscribe_(1m|3m|6m|1y)$"
         )
+# ==============================================
+# Payment
+# ==============================================
 
+application.add_handler(
+    CallbackQueryHandler(
+        payment_menu,
+        pattern="^payment_menu$"
+    )
+)
     )
 
 
