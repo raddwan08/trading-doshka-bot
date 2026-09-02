@@ -1,38 +1,27 @@
+handlers/analysis_handler.py
 
 import logging
 
 from telegram import Update
-from telegram.ext import (
-    ContextTypes,
-    ConversationHandler
-)
+from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.keyboards import (
-    analysis_keyboard,
-    main_menu_keyboard
-)
+from utils.keyboards import analysis_keyboard, main_menu_keyboard
 
 from analysis import (
-    wyckoff,
-    harmonic,
-    classic,
-    whales,
-    tvl
+wyckoff,
+harmonic,
+classic,
+whales,
+tvl
 )
 
+logger = logging.getLogger(name)
 
-logger = logging.getLogger(__name__)
-
-
-# حالة انتظار رمز العملة
 WAITING_SYMBOL = 1
+
 class AnalysisHandler:
 
-def __init__(
-    self,
-    db,
-    crypto_api
-):
+def __init__(self, db, crypto_api):
     self.db = db
     self.crypto_api = crypto_api
 
@@ -66,25 +55,14 @@ async def handle_analysis_callback(
 
 
     schools = {
-
-        "analysis_wyckoff":
-            "📈 تحليل وايكوف",
-
-        "analysis_harmonic":
-            "🦋 تحليل هارمونيك",
-
-        "analysis_classic":
-            "📉 التحليل الكلاسيكي",
-
-        "analysis_whales":
-            "🐋 تحليل الحيتان",
-
-        "analysis_tvl":
-            "🔒 تحليل TVL"
+        "analysis_wyckoff": "📈 تحليل وايكوف",
+        "analysis_harmonic": "🦋 تحليل هارمونيك",
+        "analysis_classic": "📉 التحليل الكلاسيكي",
+        "analysis_whales": "🐋 تحليل الحيتان",
+        "analysis_tvl": "🔒 تحليل TVL"
     }
 
 
-    # اختيار مدرسة التحليل
     if data in schools:
 
         context.user_data["analysis_school"] = data
@@ -92,14 +70,12 @@ async def handle_analysis_callback(
         await query.edit_message_text(
             f"{schools[data]}\n\n"
             "🪙 أرسل رمز العملة للتحليل:\n\n"
-            "مثال:\n"
-            "BTC"
+            "مثال:\nBTC"
         )
 
         return WAITING_SYMBOL
 
 
-    # إلغاء التحليل
     if data == "analysis_cancel":
 
         context.user_data.clear()
@@ -112,14 +88,12 @@ async def handle_analysis_callback(
         return ConversationHandler.END
 
 
-    # العودة إلى القائمة الرئيسية
     if data == "back_main":
 
         context.user_data.clear()
 
         await query.edit_message_text(
-            "🏠 القائمة الرئيسية\n\n"
-            "اختر الخدمة:",
+            "🏠 القائمة الرئيسية\n\nاختر الخدمة:",
             reply_markup=main_menu_keyboard()
         )
 
@@ -135,48 +109,30 @@ async def receive_symbol(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    # =========================
-    # التحليل مجاني
-    # لا يوجد فحص اشتراك هنا
-    # =========================
-
-    school = context.user_data.get(
-        "analysis_school"
-    )
+    school = context.user_data.get("analysis_school")
 
 
     if not school:
 
         await update.message.reply_text(
-            "❌ لم يتم اختيار مدرسة التحليل.\n\n"
-            "اضغط على 📊 التحليل واختر المدرسة أولاً.",
+            "❌ لم يتم اختيار مدرسة التحليل.",
             reply_markup=main_menu_keyboard()
         )
 
         return ConversationHandler.END
 
 
-    symbol = (
-        update.message.text
-        .strip()
-        .upper()
-    )
+    symbol = update.message.text.strip().upper()
 
-
-    # تنظيف الإدخال
     symbol = symbol.replace("/", "")
     symbol = symbol.replace("USDT", "")
 
 
-    # التحقق من وجود رمز
     if not symbol or len(symbol) > 15:
 
         await update.message.reply_text(
             "❌ رمز العملة غير صحيح.\n\n"
-            "مثال صحيح:\n"
-            "BTC\n"
-            "ETH\n"
-            "SOL"
+            "مثال: BTC أو ETH أو SOL"
         )
 
         return WAITING_SYMBOL
@@ -192,24 +148,12 @@ async def receive_symbol(
         result = None
 
 
-        # =========================
-        # تحليل TVL
-        # =========================
-
         if school == "analysis_tvl":
 
-            tvl_data = await self.crypto_api.get_tvl(
-                symbol
-            )
+            tvl_data = await self.crypto_api.get_tvl(symbol)
 
-            result = tvl.analyze(
-                tvl_data
-            )
+            result = tvl.analyze(tvl_data)
 
-
-        # =========================
-        # التحليلات التي تحتاج شموع
-        # =========================
 
         else:
 
@@ -223,48 +167,36 @@ async def receive_symbol(
             if not candles:
 
                 await update.message.reply_text(
-                    f"❌ لم أستطع العثور على بيانات لـ {symbol}.\n\n"
-                    "تأكد من أن رمز العملة صحيح."
+                    f"❌ لم أجد بيانات للعملة {symbol}."
+                )
+
+                context.user_data.pop(
+                    "analysis_school",
+                    None
                 )
 
                 return ConversationHandler.END
 
 
-            # وايكوف
             if school == "analysis_wyckoff":
 
-                result = wyckoff.analyze(
-                    candles
-                )
+                result = wyckoff.analyze(candles)
 
 
-            # هارمونيك
             elif school == "analysis_harmonic":
 
-                result = harmonic.analyze(
-                    candles
-                )
+                result = harmonic.analyze(candles)
 
 
-            # كلاسيكي
             elif school == "analysis_classic":
 
-                result = classic.analyze(
-                    candles
-                )
+                result = classic.analyze(candles)
 
 
-            # الحيتان
             elif school == "analysis_whales":
 
-                result = whales.analyze(
-                    candles
-                )
+                result = whales.analyze(candles)
 
-
-        # =========================
-        # التحقق من النتيجة
-        # =========================
 
         if not result:
 
@@ -272,81 +204,37 @@ async def receive_symbol(
                 "❌ فشل إنشاء التحليل."
             )
 
+            context.user_data.pop(
+                "analysis_school",
+                None
+            )
+
             return ConversationHandler.END
 
 
-        # =========================
-        # إنشاء التقرير
-        # =========================
-
-        school_name = result.get(
-            "school",
-            ""
-        )
-
-
-        signal = result.get(
-            "signal",
-            "WAIT"
-        )
-
-
-        analysis_message = result.get(
-            "message",
-            ""
-        )
-
-
         message = (
-
             "📊 Doshka Trading Pro\n\n"
-
             f"🪙 العملة: {symbol}\n"
-
-            f"🏫 المدرسة: {school_name}\n\n"
-
-            f"🎯 الإشارة: {signal}\n\n"
-
-            f"{analysis_message}"
-
+            f"🏫 المدرسة: {result.get('school', '')}\n\n"
+            f"🎯 الإشارة: {result.get('signal', 'WAIT')}\n\n"
+            f"{result.get('message', '')}"
         )
 
-
-        # =========================
-        # RSI
-        # =========================
 
         if "rsi" in result:
 
-            message += (
-                f"\n\n📊 RSI: "
-                f"{result['rsi']}"
-            )
+            message += f"\n\n📊 RSI: {result['rsi']}"
 
-
-        # =========================
-        # الدعم والمقاومة
-        # =========================
 
         if "support" in result:
 
-            message += (
-                f"\n\n📉 الدعم: "
-                f"{result['support']}"
-            )
+            message += f"\n📉 الدعم: {result['support']}"
 
 
         if "resistance" in result:
 
-            message += (
-                f"\n📈 المقاومة: "
-                f"{result['resistance']}"
-            )
+            message += f"\n📈 المقاومة: {result['resistance']}"
 
-
-        # =========================
-        # الحجم
-        # =========================
 
         if "volume_ratio" in result:
 
@@ -356,14 +244,7 @@ async def receive_symbol(
             )
 
 
-        # =========================
-        # النموذج
-        # =========================
-
-        if (
-            "pattern" in result
-            and result["pattern"]
-        ):
+        if result.get("pattern"):
 
             message += (
                 f"\n🦋 النموذج: "
@@ -371,32 +252,9 @@ async def receive_symbol(
             )
 
 
-        # =========================
-        # TVL
-        # =========================
-
-        if "tvl" in result:
-
-            message += (
-                f"\n\n🔒 TVL: "
-                f"${result['tvl']:,.0f}"
-            )
+        await update.message.reply_text(message)
 
 
-        if "change_30d" in result:
-
-            message += (
-                f"\n📊 تغير 30 يوم: "
-                f"{result['change_30d']:.2f}%"
-            )
-
-
-        await update.message.reply_text(
-            message
-        )
-
-
-        # تنظيف حالة التحليل
         context.user_data.pop(
             "analysis_school",
             None
@@ -408,14 +266,11 @@ async def receive_symbol(
 
     except Exception:
 
-        logger.exception(
-            "Analysis error"
-        )
+        logger.exception("Analysis error")
 
 
         await update.message.reply_text(
-            "❌ حدث خطأ أثناء التحليل.\n"
-            "حاول مرة أخرى لاحقاً."
+            "❌ حدث خطأ أثناء التحليل."
         )
 
 
