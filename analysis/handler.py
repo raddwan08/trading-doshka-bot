@@ -29,27 +29,27 @@ class AnalysisHandler:
             "اختر مدرسة التحليل:",
             reply_markup=analysis_keyboard()
         )
-async def handle_analysis_callback(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    query = update.callback_query
+            async def handle_analysis_callback(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        query = update.callback_query
 
-    if query is None:
-        return ConversationHandler.END
+        if query is None:
+            return ConversationHandler.END
 
-    await query.answer()
+        await query.answer()
 
-    data = query.data
+        data = query.data
 
-    schools = {
-        "analysis_wyckoff": "📈 تحليل وايكوف",
-        "analysis_harmonic": "🦋 تحليل هارمونيك",
-        "analysis_classic": "📉 التحليل الكلاسيكي",
-        "analysis_whales": "🐋 تحليل الحيتان",
-        "analysis_tvl": "🔒 تحليل TVL",
-    }
+        schools = {
+            "analysis_wyckoff": "📈 تحليل وايكوف",
+            "analysis_harmonic": "🦋 تحليل هارمونيك",
+            "analysis_classic": "📉 التحليل الكلاسيكي",
+            "analysis_whales": "🐋 تحليل الحيتان",
+            "analysis_tvl": "🔒 تحليل TVL",
+        }
 
     if data in schools:
         context.user_data["analysis_school"] = data
@@ -85,18 +85,18 @@ async def handle_analysis_callback(
 
     return ConversationHandler.END
 
-async def receive_symbol(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    if update.message is None:
-        return WAITING_SYMBOL
+        async def receive_symbol(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        if update.message is None:
+            return WAITING_SYMBOL
 
-    if not update.message.text:
-        return WAITING_SYMBOL
+        if not update.message.text:
+            return WAITING_SYMBOL
 
-    school = context.user_data.get("analysis_school")
+        school = context.user_data.get("analysis_school")
 
     if school is None:
         await update.message.reply_text(
