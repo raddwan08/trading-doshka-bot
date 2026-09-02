@@ -25,7 +25,7 @@ class AnalysisHandler:
             "📊 مدارس التحليل\n\nاختر مدرسة التحليل:",
             reply_markup=analysis_keyboard()
         )
-    )
+    
 
 async def handle_analysis_callback(
     self,
