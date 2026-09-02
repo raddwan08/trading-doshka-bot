@@ -1,59 +1,65 @@
-from sqlalchemy.orm import declarative_base
+# database/models.py
+
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
     Integer,
     String,
-    Boolean,
     Float,
-    DateTime,
-    ForeignKey
+    Boolean,
+    DateTime
 )
-from datetime import datetime
+
+from database.db import Base
 
 
-Base = declarative_base()
-
-
-# ============================================================
-# USERS
-# ============================================================
+# =========================================
+# Users
+# =========================================
 
 class User(Base):
 
     __tablename__ = "users"
 
+
     id = Column(
         Integer,
-        primary_key=True
+        primary_key=True,
+        autoincrement=True
     )
 
-    telegram_id = Column(
+
+    user_id = Column(
         Integer,
         unique=True,
         nullable=False
     )
 
+
     username = Column(
-        String(100)
+        String,
+        nullable=True
     )
 
-    first_name = Column(
-        String(100)
+
+    plan = Column(
+        String,
+        default="free"
     )
 
-    last_name = Column(
-        String(100)
+
+    expire_date = Column(
+        DateTime,
+        nullable=True
     )
 
-    is_premium = Column(
+
+    is_active = Column(
         Boolean,
         default=False
     )
 
-    subscription_expiry = Column(
-        DateTime,
-        nullable=True
-    )
 
     created_at = Column(
         DateTime,
@@ -61,66 +67,77 @@ class User(Base):
     )
 
 
-# ============================================================
-# PAYMENTS
-# ============================================================
+
+# =========================================
+# Payments
+# =========================================
 
 class Payment(Base):
 
     __tablename__ = "payments"
 
+
     id = Column(
         Integer,
-        primary_key=True
+        primary_key=True,
+        autoincrement=True
     )
+
 
     user_id = Column(
         Integer,
-        ForeignKey("users.id"),
         nullable=False
     )
 
-    # سيكون فارغاً عند إنشاء الفاتورة
-    # ثم يتم وضعه بعد اكتشاف الدفع تلقائياً
-    transaction_hash = Column(
-        String(200),
-        unique=True,
-        nullable=True
+
+    plan = Column(
+        String,
+        nullable=False
     )
+
 
     amount = Column(
         Float,
         nullable=False
     )
 
+
     currency = Column(
-        String(20),
+        String,
         default="USDT"
     )
 
+
     network = Column(
-        String(10),
+        String,
         nullable=False
     )
 
-    plan_type = Column(
-        String(50),
+
+    wallet = Column(
+        String,
         nullable=False
     )
 
-    # pending
-    # confirmed
-    # expired
-    # failed
+
     status = Column(
-        String(20),
+        String,
         default="pending"
     )
+
+
+    tx_hash = Column(
+        String,
+        unique=True,
+        nullable=True
+    )
+
 
     created_at = Column(
         DateTime,
         default=datetime.utcnow
     )
+
 
     confirmed_at = Column(
         DateTime,
@@ -128,41 +145,47 @@ class Payment(Base):
     )
 
 
-# ============================================================
-# ALERTS
-# ============================================================
 
-class Alert(Base):
+# =========================================
+# Used Transactions
+# =========================================
 
-    __tablename__ = "alerts"
+class UsedTransaction(Base):
+
+    __tablename__ = "used_transactions"
+
 
     id = Column(
         Integer,
-        primary_key=True
+        primary_key=True,
+        autoincrement=True
     )
 
-    user_id = Column(
-        Integer,
-        ForeignKey("users.id"),
+
+    tx_hash = Column(
+        String,
+        unique=True,
         nullable=False
     )
 
-    symbol = Column(
-        String(20)
+
+    network = Column(
+        String,
+        nullable=False
     )
 
-    condition_type = Column(
-        String(50)
+
+    amount = Column(
+        Float,
+        nullable=False
     )
 
-    threshold = Column(
-        Float
+
+    user_id = Column(
+        Integer,
+        nullable=False
     )
 
-    is_active = Column(
-        Boolean,
-        default=True
-    )
 
     created_at = Column(
         DateTime,
@@ -170,53 +193,46 @@ class Alert(Base):
     )
 
 
-# ============================================================
-# SIGNALS
-# ============================================================
 
-class Signal(Base):
+# =========================================
+# Analysis History
+# =========================================
 
-    __tablename__ = "signals"
+class AnalysisHistory(Base):
+
+    __tablename__ = "analysis_history"
+
 
     id = Column(
         Integer,
-        primary_key=True
+        primary_key=True,
+        autoincrement=True
     )
+
 
     user_id = Column(
         Integer,
-        ForeignKey("users.id"),
         nullable=False
     )
 
+
     symbol = Column(
-        String(20)
+        String,
+        nullable=False
     )
 
-    signal_type = Column(
-        String(20)
+
+    school = Column(
+        String,
+        nullable=False
     )
 
-    direction = Column(
-        String(10)
+
+    result = Column(
+        String,
+        nullable=True
     )
 
-    entry_price = Column(
-        Float
-    )
-
-    stop_loss = Column(
-        Float
-    )
-
-    take_profit = Column(
-        String(200)
-    )
-
-    status = Column(
-        String(20),
-        default="active"
-    )
 
     created_at = Column(
         DateTime,
