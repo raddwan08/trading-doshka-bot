@@ -294,36 +294,64 @@ async def select_subscription(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-    query = update.callback_query
 
-    if query is None:
-        return
+    query = update.callback_query
 
     await query.answer()
 
     plans = {
-        "subscribe_1m": ("📅 اشتراك شهر", 20),
-        "subscribe_3m": ("💎 اشتراك 3 أشهر", 50),
-        "subscribe_6m": ("👑 اشتراك 6 أشهر", 75),
-        "subscribe_1y": ("🏆 اشتراك سنة", 125),
+
+        "subscribe_1m": (
+            "📅 اشتراك شهر",
+            "$20"
+        ),
+
+        "subscribe_3m": (
+            "💎 اشتراك 3 أشهر",
+            "$50"
+        ),
+
+        "subscribe_6m": (
+            "👑 اشتراك 6 أشهر",
+            "$75"
+        ),
+
+        "subscribe_1y": (
+            "🏆 اشتراك سنة",
+            "$125"
+        )
     }
+
 
     plan = plans.get(query.data)
 
     if not plan:
         return
 
+
     plan_name, price = plan
 
-    context.user_data["selected_plan"] = query.data
-    context.user_data["selected_price"] = price
 
     await query.edit_message_text(
+
         f"{plan_name}\n\n"
-        f"💰 السعر: {price} USDT\n\n"
-        "اختر شبكة الدفع:",
-        reply_markup=payment_network_keyboard()
-        
+        f"💰 السعر: {price}\n\n"
+
+        "💳 طرق الدفع:\n\n"
+
+        "🟣 SOL Network\n"
+        "محفظة SOL:\n"
+        f"{os.getenv('SOL_WALLET')}\n\n"
+
+        "🔵 Ethereum Network\n"
+        "محفظة ETH:\n"
+        f"{os.getenv('ETH_WALLET')}\n\n"
+
+        "🟡 BNB Smart Chain\n"
+        "محفظة BNB:\n"
+        f"{os.getenv('BNB_WALLET')}\n\n"
+
+        "بعد الدفع أرسل Transaction Hash للتحقق."
     )# ==================================================
 # PAYMENT
 # ==================================================
