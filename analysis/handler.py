@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.keyboards import analysis_keyboard, main_menu_keyboard
 from analysis import wyckoff, harmonic, classic, whales, tvl
-
+    )
 logger = logging.getLogger(name)
 
 WAITING_SYMBOL = 1
@@ -27,7 +27,6 @@ async def show_analysis_menu(
         "اختر مدرسة التحليل:",
         reply_markup=analysis_keyboard()
     )
-
 async def handle_analysis_callback(
     self,
     update: Update,
