@@ -1,5 +1,3 @@
-handlers/analysis_handler.py
-
 import logging
 
 from telegram import Update
@@ -7,13 +5,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.keyboards import analysis_keyboard, main_menu_keyboard
 
-from analysis import (
-wyckoff,
-harmonic,
-classic,
-whales,
-tvl
-)
+from analysis import wyckoff, harmonic, classic, whales, tvl
 
 logger = logging.getLogger(name)
 
@@ -49,6 +41,9 @@ async def handle_analysis_callback(
 
     query = update.callback_query
 
+    if not query:
+        return ConversationHandler.END
+
     await query.answer()
 
     data = query.data
@@ -70,7 +65,7 @@ async def handle_analysis_callback(
         await query.edit_message_text(
             f"{schools[data]}\n\n"
             "🪙 أرسل رمز العملة للتحليل:\n\n"
-            "مثال:\nBTC"
+            "مثال: BTC"
         )
 
         return WAITING_SYMBOL
@@ -93,7 +88,8 @@ async def handle_analysis_callback(
         context.user_data.clear()
 
         await query.edit_message_text(
-            "🏠 القائمة الرئيسية\n\nاختر الخدمة:",
+            "🏠 القائمة الرئيسية\n\n"
+            "اختر الخدمة:",
             reply_markup=main_menu_keyboard()
         )
 
@@ -109,7 +105,13 @@ async def receive_symbol(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    school = context.user_data.get("analysis_school")
+    if not update.message or not update.message.text:
+        return WAITING_SYMBOL
+
+
+    school = context.user_data.get(
+        "analysis_school"
+    )
 
 
     if not school:
@@ -126,13 +128,17 @@ async def receive_symbol(
 
     symbol = symbol.replace("/", "")
     symbol = symbol.replace("USDT", "")
+    symbol = symbol.replace(" ", "")
 
 
     if not symbol or len(symbol) > 15:
 
         await update.message.reply_text(
             "❌ رمز العملة غير صحيح.\n\n"
-            "مثال: BTC أو ETH أو SOL"
+            "أمثلة صحيحة:\n"
+            "BTC\n"
+            "ETH\n"
+            "SOL"
         )
 
         return WAITING_SYMBOL
@@ -150,9 +156,13 @@ async def receive_symbol(
 
         if school == "analysis_tvl":
 
-            tvl_data = await self.crypto_api.get_tvl(symbol)
+            tvl_data = await self.crypto_api.get_tvl(
+                symbol
+            )
 
-            result = tvl.analyze(tvl_data)
+            result = tvl.analyze(
+                tvl_data
+            )
 
 
         else:
@@ -167,7 +177,8 @@ async def receive_symbol(
             if not candles:
 
                 await update.message.reply_text(
-                    f"❌ لم أجد بيانات للعملة {symbol}."
+                    f"❌ لا توجد بيانات للعملة {symbol}.\n\n"
+                    "تأكد من رمز العملة وحاول مرة أخرى."
                 )
 
                 context.user_data.pop(
@@ -180,22 +191,30 @@ async def receive_symbol(
 
             if school == "analysis_wyckoff":
 
-                result = wyckoff.analyze(candles)
+                result = wyckoff.analyze(
+                    candles
+                )
 
 
             elif school == "analysis_harmonic":
 
-                result = harmonic.analyze(candles)
+                result = harmonic.analyze(
+                    candles
+                )
 
 
             elif school == "analysis_classic":
 
-                result = classic.analyze(candles)
+                result = classic.analyze(
+                    candles
+                )
 
 
             elif school == "analysis_whales":
 
-                result = whales.analyze(candles)
+                result = whales.analyze(
+                    candles
+                )
 
 
         if not result:
@@ -223,17 +242,26 @@ async def receive_symbol(
 
         if "rsi" in result:
 
-            message += f"\n\n📊 RSI: {result['rsi']}"
+            message += (
+                f"\n\n📊 RSI: "
+                f"{result['rsi']}"
+            )
 
 
         if "support" in result:
 
-            message += f"\n📉 الدعم: {result['support']}"
+            message += (
+                f"\n📉 الدعم: "
+                f"{result['support']}"
+            )
 
 
         if "resistance" in result:
 
-            message += f"\n📈 المقاومة: {result['resistance']}"
+            message += (
+                f"\n📈 المقاومة: "
+                f"{result['resistance']}"
+            )
 
 
         if "volume_ratio" in result:
@@ -252,7 +280,23 @@ async def receive_symbol(
             )
 
 
-        await update.message.reply_text(message)
+        if result.get("tvl") is not None:
+
+            try:
+                message += (
+                    f"\n\n🔒 TVL: "
+                    f"${float(result['tvl']):,.0f}"
+                )
+            except (ValueError, TypeError):
+                message += (
+                    f"\n\n🔒 TVL: "
+                    f"{result['tvl']}"
+                )
+
+
+        await update.message.reply_text(
+            message
+        )
 
 
         context.user_data.pop(
@@ -266,18 +310,17 @@ async def receive_symbol(
 
     except Exception:
 
-        logger.exception("Analysis error")
-
-
-        await update.message.reply_text(
-            "❌ حدث خطأ أثناء التحليل."
+        logger.exception(
+            "Analysis error"
         )
 
+        await update.message.reply_text(
+            "❌ حدث خطأ أثناء تنفيذ التحليل."
+        )
 
         context.user_data.pop(
             "analysis_school",
             None
         )
-
 
         return ConversationHandler.END
