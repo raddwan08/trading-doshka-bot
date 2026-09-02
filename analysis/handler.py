@@ -17,18 +17,18 @@ class AnalysisHandler:
         self.db = db
         self.crypto_api = crypto_api
 
-async def show_analysis_menu(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    message = update.effective_message
+    async def show_analysis_menu(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        message = update.effective_message
 
-    await message.reply_text(
-        "📊 مدارس التحليل\n\n"
-        "اختر مدرسة التحليل:",
-        reply_markup=analysis_keyboard()
-    )
+        await message.reply_text(
+            "📊 مدارس التحليل\n\n"
+            "اختر مدرسة التحليل:",
+            reply_markup=analysis_keyboard()
+        )
 async def handle_analysis_callback(
     self,
     update: Update,
