@@ -1,3 +1,5 @@
+# database/db.py
+
 import sqlite3
 import os
 
@@ -24,12 +26,22 @@ class Database:
 
 
 
+    # =========================
+    # CONNECTION
+    # =========================
+
+
     def connect(self):
 
         return sqlite3.connect(
             self.path
         )
 
+
+
+    # =========================
+    # CREATE TABLES
+    # =========================
 
 
     def init_db(self):
@@ -40,7 +52,8 @@ class Database:
 
 
 
-        # جدول المستخدمين
+        # USERS
+
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users
@@ -62,7 +75,8 @@ class Database:
 
 
 
-        # جدول طلبات الدفع
+        # PAYMENTS
+
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS payments
@@ -80,11 +94,13 @@ class Database:
 
                 currency TEXT,
 
+                network TEXT,
+
                 wallet TEXT,
 
-                status TEXT DEFAULT 'pending',
+                tx_hash TEXT UNIQUE,
 
-                tx_hash TEXT,
+                status TEXT DEFAULT 'pending',
 
                 created_at TEXT
 
@@ -100,162 +116,27 @@ class Database:
 
 
 
-    # ==========================
-    # Subscription
-    # ==========================
-
-
-    def check_subscription(
-        self,
-        user_id
-    ):
-
-
-        conn = self.connect()
-
-        cursor = conn.cursor()
-
-
-        cursor.execute(
-            """
-            SELECT expire_date,is_active
-
-            FROM users
-
-            WHERE user_id=?
-
-            """,
-            (
-                user_id,
-            )
-        )
-
-
-        row = cursor.fetchone()
-
-        conn.close()
-
-
-
-        if not row:
-
-            return False
-
-
-
-        expire_date, active = row
-
-
-
-        if active != 1:
-
-            return False
-
-
-
-        try:
-
-            expire = datetime.strptime(
-                expire_date,
-                "%Y-%m-%d"
-            )
-
-
-            return expire >= datetime.now()
-
-
-
-        except:
-
-            return False
-
-
-
-
-
-    def activate_subscription(
-        self,
-        user_id,
-        username,
-        plan,
-        days
-    ):
-
-
-        expire = (
-            datetime.now()
-            +
-            timedelta(days=days)
-        )
-
-
-
-        conn = self.connect()
-
-        cursor = conn.cursor()
-
-
-
-        cursor.execute(
-            """
-            INSERT INTO users
-            (
-                user_id,
-                username,
-                plan,
-                expire_date,
-                is_active
-            )
-
-            VALUES
-            (?,?,?,?,1)
-
-
-            ON CONFLICT(user_id)
-
-            DO UPDATE SET
-
-            username=excluded.username,
-
-            plan=excluded.plan,
-
-            expire_date=excluded.expire_date,
-
-            is_active=1
-
-            """,
-
-            (
-                user_id,
-                username,
-                plan,
-                expire.strftime("%Y-%m-%d")
-            )
-
-        )
-
-
-        conn.commit()
-
-        conn.close()
-
-
-
-
-
-    # ==========================
-    # Payments
-    # ==========================
+    # =========================
+    # CREATE PAYMENT REQUEST
+    # =========================
 
 
     def create_payment(
+
         self,
+
         user_id,
+
         username,
+
         plan,
+
         amount,
+
         currency,
+
         wallet
+
     ):
 
 
@@ -269,52 +150,67 @@ class Database:
 
             """
             INSERT INTO payments
+
             (
-
-            user_id,
-            username,
-            plan,
-            amount,
-            currency,
-            wallet,
-            status,
-            created_at
-
+                user_id,
+                username,
+                plan,
+                amount,
+                currency,
+                network,
+                wallet,
+                status,
+                created_at
             )
 
             VALUES
-            (?,?,?,?,?,?,?,?)
+            (?,?,?,?,?,?,?,?,?)
 
             """,
 
             (
 
-            user_id,
-            username,
-            plan,
-            amount,
-            currency,
-            wallet,
-            "pending",
-            datetime.now().isoformat()
+                user_id,
+
+                username,
+
+                plan,
+
+                amount,
+
+                currency,
+
+                "TRC20",
+
+                wallet,
+
+                "pending",
+
+                datetime.now().isoformat()
 
             )
 
         )
 
 
-        conn.commit()
 
         payment_id = cursor.lastrowid
 
 
+
+        conn.commit()
+
         conn.close()
+
 
 
         return payment_id
 
 
 
+    # =========================
+    # GET PENDING PAYMENTS
+    # =========================
 
 
     def get_pending_payments(self):
@@ -323,6 +219,7 @@ class Database:
         conn = self.connect()
 
         cursor = conn.cursor()
+
 
 
         cursor.execute(
@@ -334,9 +231,7 @@ class Database:
             user_id,
             username,
             plan,
-            amount,
-            currency,
-            wallet
+            amount
 
             FROM payments
 
@@ -350,6 +245,7 @@ class Database:
         rows = cursor.fetchall()
 
 
+
         conn.close()
 
 
@@ -357,12 +253,70 @@ class Database:
 
 
 
+    # =========================
+    # CHECK TX EXISTS
+    # =========================
+
+
+    def transaction_exists(
+
+        self,
+
+        tx_hash
+
+    ):
+
+
+        conn = self.connect()
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute(
+
+            """
+            SELECT id
+
+            FROM payments
+
+            WHERE tx_hash=?
+
+            """,
+
+            (
+                tx_hash,
+            )
+
+        )
+
+
+
+        result = cursor.fetchone()
+
+
+
+        conn.close()
+
+
+
+        return result is not None
+
+
+
+    # =========================
+    # CONFIRM PAYMENT
+    # =========================
 
 
     def confirm_payment(
+
         self,
+
         payment_id,
+
         tx_hash
+
     ):
 
 
@@ -388,13 +342,218 @@ class Database:
             """,
 
             (
+
                 tx_hash,
+
                 payment_id
+
             )
 
         )
 
 
+
         conn.commit()
 
         conn.close()
+
+
+
+    # =========================
+    # ACTIVATE SUBSCRIPTION
+    # =========================
+
+
+    def activate_subscription(
+
+        self,
+
+        user_id,
+
+        username,
+
+        plan,
+
+        days
+
+    ):
+
+
+        expire = (
+
+            datetime.now()
+
+            +
+
+            timedelta(
+                days=days
+            )
+
+        )
+
+
+
+        conn = self.connect()
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute(
+
+            """
+
+            INSERT INTO users
+
+            (
+
+            user_id,
+
+            username,
+
+            plan,
+
+            expire_date,
+
+            is_active
+
+            )
+
+
+            VALUES
+
+            (?,?,?,?,1)
+
+
+            ON CONFLICT(user_id)
+
+            DO UPDATE SET
+
+
+            username=excluded.username,
+
+            plan=excluded.plan,
+
+            expire_date=excluded.expire_date,
+
+            is_active=1
+
+
+            """,
+
+            (
+
+                user_id,
+
+                username,
+
+                plan,
+
+                expire.strftime(
+                    "%Y-%m-%d"
+                )
+
+            )
+
+        )
+
+
+
+        conn.commit()
+
+        conn.close()
+
+
+
+    # =========================
+    # CHECK SUBSCRIPTION
+    # =========================
+
+
+    def check_subscription(
+
+        self,
+
+        user_id
+
+    ):
+
+
+        conn = self.connect()
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute(
+
+            """
+
+            SELECT
+
+            expire_date,
+
+            is_active
+
+
+            FROM users
+
+
+            WHERE user_id=?
+
+
+            """,
+
+            (
+
+                user_id,
+
+            )
+
+        )
+
+
+
+        row = cursor.fetchone()
+
+
+
+        conn.close()
+
+
+
+        if not row:
+
+            return False
+
+
+
+        expire_date, active = row
+
+
+
+        if active != 1:
+
+            return False
+
+
+
+        try:
+
+            expire = datetime.strptime(
+
+                expire_date,
+
+                "%Y-%m-%d"
+
+            )
+
+
+            return expire >= datetime.now()
+
+
+
+        except:
+
+
+            return False
