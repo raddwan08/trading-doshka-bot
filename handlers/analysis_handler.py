@@ -6,23 +6,25 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils.keyboards import analysis_keyboard, main_menu_keyboard
 from analysis import wyckoff, harmonic, classic, whales, tvl
 
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 WAITING_SYMBOL = 1
 
 class AnalysisHandler:
-def init(self, db, crypto_api):
-self.db = db
-self.crypto_api = crypto_api
 
-async def show_analysis_menu(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    await update.effective_message.reply_text(
-        "📊 مدارس التحليل\n\nاختر مدرسة التحليل:",
-        reply_markup=analysis_keyboard()
+    def __init__(self, db, crypto_api):
+        self.db = db
+        self.crypto_api = crypto_api
+
+    async def show_analysis_menu(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        await update.effective_message.reply_text(
+            "📊 مدارس التحليل\n\nاختر مدرسة التحليل:",
+            reply_markup=analysis_keyboard()
+        )
     )
 
 async def handle_analysis_callback(
