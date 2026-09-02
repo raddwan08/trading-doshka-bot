@@ -1,315 +1,429 @@
-# handlers/analysis_handler.py
-
-from telegram import Update
-from telegram.ext import ContextTypes, ConversationHandler
-
-from utils.keyboards import (
-    analysis_keyboard,
-    main_menu_keyboard
-)
-
-from analysis import (
-    wyckoff,
-    harmonic,
-    classic,
-    whales,
-    tvl
-)
+handlers/analysis_handler.py
 
 import logging
 
+from telegram import Update
+from telegram.ext import (
+ContextTypes,
+ConversationHandler
+)
 
-logger = logging.getLogger(__name__)
+from utils.keyboards import (
+analysis_keyboard,
+main_menu_keyboard
+)
 
+from analysis import (
+wyckoff,
+harmonic,
+classic,
+whales,
+tvl
+)
+
+logger = logging.getLogger(name)
+
+حالة انتظار رمز العملة
 
 WAITING_SYMBOL = 1
 
-
 class AnalysisHandler:
 
-    def __init__(
-        self,
-        db,
-        crypto_api
-    ):
-        self.db = db
-        self.crypto_api = crypto_api
+def __init__(
+    self,
+    db,
+    crypto_api
+):
+    self.db = db
+    self.crypto_api = crypto_api
 
 
-    async def show_analysis_menu(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE
-    ):
+async def show_analysis_menu(
+    self,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-        message = update.effective_message
+    message = update.effective_message
 
-        await message.reply_text(
-            "📊 مدارس التحليل\n\n"
-            "اختر مدرسة التحليل:",
-            reply_markup=analysis_keyboard()
+    await message.reply_text(
+        "📊 مدارس التحليل\n\n"
+        "اختر مدرسة التحليل:",
+        reply_markup=analysis_keyboard()
+    )
+
+
+async def handle_analysis_callback(
+    self,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    data = query.data
+
+
+    schools = {
+
+        "analysis_wyckoff":
+            "📈 تحليل وايكوف",
+
+        "analysis_harmonic":
+            "🦋 تحليل هارمونيك",
+
+        "analysis_classic":
+            "📉 التحليل الكلاسيكي",
+
+        "analysis_whales":
+            "🐋 تحليل الحيتان",
+
+        "analysis_tvl":
+            "🔒 تحليل TVL"
+    }
+
+
+    # اختيار مدرسة التحليل
+    if data in schools:
+
+        context.user_data["analysis_school"] = data
+
+        await query.edit_message_text(
+            f"{schools[data]}\n\n"
+            "🪙 أرسل رمز العملة للتحليل:\n\n"
+            "مثال:\n"
+            "BTC"
         )
 
-
-    async def handle_analysis_callback(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE
-    ):
-
-        query = update.callback_query
-
-        await query.answer()
-
-        data = query.data
+        return WAITING_SYMBOL
 
 
-        schools = {
+    # إلغاء التحليل
+    if data == "analysis_cancel":
 
-            "analysis_wyckoff":
-                "📈 تحليل وايكوف",
+        context.user_data.clear()
 
-            "analysis_harmonic":
-                "🦋 تحليل هارمونيك",
-
-            "analysis_classic":
-                "📉 التحليل الكلاسيكي",
-
-            "analysis_whales":
-                "🐋 تحليل الحيتان",
-
-            "analysis_tvl":
-                "🔒 تحليل TVL"
-
-        }
-
-
-        if data in schools:
-
-            context.user_data["analysis_school"] = data
-
-            await query.edit_message_text(
-
-                f"{schools[data]}\n\n"
-                "🪙 أرسل رمز العملة:\n\n"
-                "مثال:\n"
-                "BTC"
-
-            )
-
-            return WAITING_SYMBOL
-
-
-
-        if data == "analysis_cancel":
-
-            context.user_data.clear()
-
-            await query.edit_message_text(
-                "❌ تم إلغاء التحليل"
-            )
-
-            return ConversationHandler.END
-
-
-
-        if data == "back_main":
-
-            context.user_data.clear()
-
-            await query.edit_message_text(
-                "🏠 القائمة الرئيسية",
-                reply_markup=main_menu_keyboard()
-            )
-
-            return ConversationHandler.END
-
-
-
-    async def receive_symbol(
-        self,
-        update: Update,
-        context: ContextTypes.DEFAULT_TYPE
-    ):
-
-        user_id = update.effective_user.id
-
-
-        if not self.db.check_subscription(user_id):
-
-            await update.message.reply_text(
-                "🔒 التحليل متاح للمشتركين فقط\n\n"
-                "استخدم /subscribe للاشتراك"
-            )
-
-            return ConversationHandler.END
-
-
-
-        school = context.user_data.get(
-            "analysis_school"
+        await query.edit_message_text(
+            "❌ تم إلغاء التحليل.",
+            reply_markup=main_menu_keyboard()
         )
 
-
-        if not school:
-
-            await update.message.reply_text(
-                "❌ لم يتم اختيار مدرسة التحليل"
-            )
-
-            return ConversationHandler.END
+        return ConversationHandler.END
 
 
+    # العودة إلى القائمة الرئيسية
+    if data == "back_main":
 
-        symbol = (
-            update.message.text
-            .strip()
-            .upper()
+        context.user_data.clear()
+
+        await query.edit_message_text(
+            "🏠 القائمة الرئيسية\n\n"
+            "اختر الخدمة:",
+            reply_markup=main_menu_keyboard()
         )
 
+        return ConversationHandler.END
+
+
+    return ConversationHandler.END
+
+
+async def receive_symbol(
+    self,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    # =========================
+    # التحليل مجاني
+    # لا يوجد فحص اشتراك هنا
+    # =========================
+
+    school = context.user_data.get(
+        "analysis_school"
+    )
+
+
+    if not school:
 
         await update.message.reply_text(
-            f"⏳ جاري تحليل {symbol}..."
+            "❌ لم يتم اختيار مدرسة التحليل.\n\n"
+            "اضغط على 📊 التحليل واختر المدرسة أولاً.",
+            reply_markup=main_menu_keyboard()
         )
 
-
-        try:
-
-            result = None
+        return ConversationHandler.END
 
 
-            if school == "analysis_tvl":
-
-                tvl_data = await self.crypto_api.get_tvl(
-                    symbol
-                )
-
-                result = tvl.analyze(
-                    tvl_data
-                )
+    symbol = (
+        update.message.text
+        .strip()
+        .upper()
+    )
 
 
-            else:
-
-                candles = await self.crypto_api.get_klines(
-                    symbol,
-                    interval="4h",
-                    limit=100
-                )
+    # تنظيف الإدخال
+    symbol = symbol.replace("/", "")
+    symbol = symbol.replace("USDT", "")
 
 
-                if not candles:
+    # التحقق من وجود رمز
+    if not symbol or len(symbol) > 15:
 
-                    await update.message.reply_text(
-                        "❌ لا توجد بيانات لهذه العملة"
-                    )
+        await update.message.reply_text(
+            "❌ رمز العملة غير صحيح.\n\n"
+            "مثال صحيح:\n"
+            "BTC\n"
+            "ETH\n"
+            "SOL"
+        )
 
-                    return ConversationHandler.END
-
-
-
-                if school == "analysis_wyckoff":
-
-                    result = wyckoff.analyze(
-                        candles
-                    )
+        return WAITING_SYMBOL
 
 
-                elif school == "analysis_harmonic":
-
-                    result = harmonic.analyze(
-                        candles
-                    )
+    await update.message.reply_text(
+        f"⏳ جاري تحليل {symbol}..."
+    )
 
 
-                elif school == "analysis_classic":
+    try:
 
-                    result = classic.analyze(
-                        candles
-                    )
+        result = None
 
 
-                elif school == "analysis_whales":
+        # =========================
+        # تحليل TVL
+        # =========================
 
-                    result = whales.analyze(
-                        candles
-                    )
+        if school == "analysis_tvl":
+
+            tvl_data = await self.crypto_api.get_tvl(
+                symbol
+            )
+
+            result = tvl.analyze(
+                tvl_data
+            )
 
 
+        # =========================
+        # التحليلات التي تحتاج شموع
+        # =========================
 
-            if not result:
+        else:
+
+            candles = await self.crypto_api.get_klines(
+                symbol,
+                interval="4h",
+                limit=100
+            )
+
+
+            if not candles:
 
                 await update.message.reply_text(
-                    "❌ فشل إنشاء التحليل"
+                    f"❌ لم أستطع العثور على بيانات لـ {symbol}.\n\n"
+                    "تأكد من أن رمز العملة صحيح."
                 )
 
                 return ConversationHandler.END
 
 
+            # وايكوف
+            if school == "analysis_wyckoff":
 
-            message = (
-
-                "📊 Doshka Trading Pro\n\n"
-                f"🪙 العملة: {symbol}\n"
-                f"🏫 المدرسة: {result.get('school','')}\n\n"
-                f"🎯 الإشارة: {result.get('signal','WAIT')}\n\n"
-                f"{result.get('message','')}"
-
-            )
-
-
-            if "rsi" in result:
-
-                message += (
-                    f"\n\n📊 RSI: {result['rsi']}"
+                result = wyckoff.analyze(
+                    candles
                 )
 
 
-            if "support" in result:
+            # هارمونيك
+            elif school == "analysis_harmonic":
 
-                message += (
-                    f"\n📉 الدعم: {result['support']}"
-                    f"\n📈 المقاومة: {result['resistance']}"
+                result = harmonic.analyze(
+                    candles
                 )
 
 
-            if "volume_ratio" in result:
+            # كلاسيكي
+            elif school == "analysis_classic":
 
-                message += (
-                    f"\n🐋 قوة الحجم: {result['volume_ratio']}x"
+                result = classic.analyze(
+                    candles
                 )
 
 
-            if "pattern" in result and result["pattern"]:
+            # الحيتان
+            elif school == "analysis_whales":
 
-                message += (
-                    f"\n🦋 النموذج: {result['pattern']}"
+                result = whales.analyze(
+                    candles
                 )
 
+
+        # =========================
+        # التحقق من النتيجة
+        # =========================
+
+        if not result:
 
             await update.message.reply_text(
-                message
+                "❌ فشل إنشاء التحليل."
             )
-
-
-            context.user_data.pop(
-                "analysis_school",
-                None
-            )
-
 
             return ConversationHandler.END
 
 
+        # =========================
+        # إنشاء التقرير
+        # =========================
 
-        except Exception as e:
+        school_name = result.get(
+            "school",
+            ""
+        )
 
-            logger.error(
-                f"Analysis error: {e}"
+
+        signal = result.get(
+            "signal",
+            "WAIT"
+        )
+
+
+        analysis_message = result.get(
+            "message",
+            ""
+        )
+
+
+        message = (
+
+            "📊 Doshka Trading Pro\n\n"
+
+            f"🪙 العملة: {symbol}\n"
+
+            f"🏫 المدرسة: {school_name}\n\n"
+
+            f"🎯 الإشارة: {signal}\n\n"
+
+            f"{analysis_message}"
+
+        )
+
+
+        # =========================
+        # RSI
+        # =========================
+
+        if "rsi" in result:
+
+            message += (
+                f"\n\n📊 RSI: "
+                f"{result['rsi']}"
             )
 
-            await update.message.reply_text(
-                "❌ حدث خطأ أثناء التحليل"
+
+        # =========================
+        # الدعم والمقاومة
+        # =========================
+
+        if "support" in result:
+
+            message += (
+                f"\n\n📉 الدعم: "
+                f"{result['support']}"
             )
 
-            return ConversationHandler.END
+
+        if "resistance" in result:
+
+            message += (
+                f"\n📈 المقاومة: "
+                f"{result['resistance']}"
+            )
+
+
+        # =========================
+        # الحجم
+        # =========================
+
+        if "volume_ratio" in result:
+
+            message += (
+                f"\n🐋 قوة الحجم: "
+                f"{result['volume_ratio']}x"
+            )
+
+
+        # =========================
+        # النموذج
+        # =========================
+
+        if (
+            "pattern" in result
+            and result["pattern"]
+        ):
+
+            message += (
+                f"\n🦋 النموذج: "
+                f"{result['pattern']}"
+            )
+
+
+        # =========================
+        # TVL
+        # =========================
+
+        if "tvl" in result:
+
+            message += (
+                f"\n\n🔒 TVL: "
+                f"${result['tvl']:,.0f}"
+            )
+
+
+        if "change_30d" in result:
+
+            message += (
+                f"\n📊 تغير 30 يوم: "
+                f"{result['change_30d']:.2f}%"
+            )
+
+
+        await update.message.reply_text(
+            message
+        )
+
+
+        # تنظيف حالة التحليل
+        context.user_data.pop(
+            "analysis_school",
+            None
+        )
+
+
+        return ConversationHandler.END
+
+
+    except Exception:
+
+        logger.exception(
+            "Analysis error"
+        )
+
+
+        await update.message.reply_text(
+            "❌ حدث خطأ أثناء التحليل.\n"
+            "حاول مرة أخرى لاحقاً."
+        )
+
+
+        context.user_data.pop(
+            "analysis_school",
+            None
+        )
+
+
+        return ConversationHandler.END
