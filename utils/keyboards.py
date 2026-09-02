@@ -19,8 +19,8 @@ def main_menu_keyboard():
 
         [
             InlineKeyboardButton(
-                "🔔 التنبيهات",
-                callback_data="alerts_menu"
+                "🚀 Futures",
+                callback_data="futures_menu"
             ),
 
             InlineKeyboardButton(
@@ -31,6 +31,11 @@ def main_menu_keyboard():
 
         [
             InlineKeyboardButton(
+                "🔔 التنبيهات",
+                callback_data="alerts_menu"
+            ),
+
+            InlineKeyboardButton(
                 "ℹ️ مساعدة",
                 callback_data="help_menu"
             )
@@ -38,7 +43,6 @@ def main_menu_keyboard():
     ]
 
     return InlineKeyboardMarkup(keyboard)
-
 
 
 def analysis_keyboard():
@@ -80,6 +84,47 @@ def analysis_keyboard():
             InlineKeyboardButton(
                 "❌ إلغاء",
                 callback_data="analysis_cancel"
+            ),
+
+            InlineKeyboardButton(
+                "🔙 رجوع",
+                callback_data="back_main"
+            )
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def subscription_keyboard():
+
+    keyboard = [
+
+        [
+            InlineKeyboardButton(
+                "📅 شهر - $20",
+                callback_data="subscribe_1m"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "💎 3 أشهر - $50",
+                callback_data="subscribe_3m"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "👑 6 أشهر - $75",
+                callback_data="subscribe_6m"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "🏆 سنة - $125",
+                callback_data="subscribe_1y"
             )
         ],
 
@@ -89,8 +134,6 @@ def analysis_keyboard():
                 callback_data="back_main"
             )
         ]
-
     ]
-
 
     return InlineKeyboardMarkup(keyboard)
