@@ -1,12 +1,17 @@
 import sqlite3
 import os
+
 from datetime import datetime, timedelta
+
 
 
 class Database:
 
 
-    def __init__(self, path="data/subscriptions.db"):
+    def __init__(
+        self,
+        path="data/subscriptions.db"
+    ):
 
         self.path = path
 
@@ -34,10 +39,13 @@ class Database:
         cursor = conn.cursor()
 
 
+
+        # جدول المستخدمين
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users
             (
+
                 user_id INTEGER PRIMARY KEY,
 
                 username TEXT,
@@ -47,15 +55,54 @@ class Database:
                 expire_date TEXT,
 
                 is_active INTEGER DEFAULT 0
+
             )
             """
         )
+
+
+
+        # جدول طلبات الدفع
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS payments
+            (
+
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                user_id INTEGER,
+
+                username TEXT,
+
+                plan TEXT,
+
+                amount REAL,
+
+                currency TEXT,
+
+                wallet TEXT,
+
+                status TEXT DEFAULT 'pending',
+
+                tx_hash TEXT,
+
+                created_at TEXT
+
+            )
+            """
+        )
+
 
 
         conn.commit()
 
         conn.close()
 
+
+
+    # ==========================
+    # Subscription
+    # ==========================
 
 
     def check_subscription(
@@ -70,22 +117,21 @@ class Database:
 
 
         cursor.execute(
-
             """
             SELECT expire_date,is_active
-            FROM users
-            WHERE user_id=?
-            """,
 
+            FROM users
+
+            WHERE user_id=?
+
+            """,
             (
                 user_id,
             )
-
         )
 
 
         row = cursor.fetchone()
-
 
         conn.close()
 
@@ -115,18 +161,14 @@ class Database:
             )
 
 
-            if expire < datetime.now():
+            return expire >= datetime.now()
 
-                return False
-
-
-            return True
 
 
         except:
 
-
             return False
+
 
 
 
@@ -147,6 +189,7 @@ class Database:
         )
 
 
+
         conn = self.connect()
 
         cursor = conn.cursor()
@@ -154,7 +197,6 @@ class Database:
 
 
         cursor.execute(
-
             """
             INSERT INTO users
             (
@@ -168,8 +210,12 @@ class Database:
             VALUES
             (?,?,?,?,1)
 
+
             ON CONFLICT(user_id)
+
             DO UPDATE SET
+
+            username=excluded.username,
 
             plan=excluded.plan,
 
@@ -180,21 +226,173 @@ class Database:
             """,
 
             (
-
                 user_id,
-
                 username,
-
                 plan,
+                expire.strftime("%Y-%m-%d")
+            )
 
-                expire.strftime(
-                    "%Y-%m-%d"
-                )
+        )
+
+
+        conn.commit()
+
+        conn.close()
+
+
+
+
+
+    # ==========================
+    # Payments
+    # ==========================
+
+
+    def create_payment(
+        self,
+        user_id,
+        username,
+        plan,
+        amount,
+        currency,
+        wallet
+    ):
+
+
+        conn = self.connect()
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute(
+
+            """
+            INSERT INTO payments
+            (
+
+            user_id,
+            username,
+            plan,
+            amount,
+            currency,
+            wallet,
+            status,
+            created_at
+
+            )
+
+            VALUES
+            (?,?,?,?,?,?,?,?)
+
+            """,
+
+            (
+
+            user_id,
+            username,
+            plan,
+            amount,
+            currency,
+            wallet,
+            "pending",
+            datetime.now().isoformat()
 
             )
 
         )
 
+
+        conn.commit()
+
+        payment_id = cursor.lastrowid
+
+
+        conn.close()
+
+
+        return payment_id
+
+
+
+
+
+    def get_pending_payments(self):
+
+
+        conn = self.connect()
+
+        cursor = conn.cursor()
+
+
+        cursor.execute(
+
+            """
+            SELECT
+
+            id,
+            user_id,
+            username,
+            plan,
+            amount,
+            currency,
+            wallet
+
+            FROM payments
+
+            WHERE status='pending'
+
+            """
+
+        )
+
+
+        rows = cursor.fetchall()
+
+
+        conn.close()
+
+
+        return rows
+
+
+
+
+
+    def confirm_payment(
+        self,
+        payment_id,
+        tx_hash
+    ):
+
+
+        conn = self.connect()
+
+        cursor = conn.cursor()
+
+
+
+        cursor.execute(
+
+            """
+            UPDATE payments
+
+            SET
+
+            status='confirmed',
+
+            tx_hash=?
+
+            WHERE id=?
+
+            """,
+
+            (
+                tx_hash,
+                payment_id
+            )
+
+        )
 
 
         conn.commit()
