@@ -16,9 +16,7 @@ self.db = db
 self.crypto_api = crypto_api
 
 async def show_analysis_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
-
-    await message.reply_text(
+    await update.effective_message.reply_text(
         "📊 مدارس التحليل\n\nاختر مدرسة التحليل:",
         reply_markup=analysis_keyboard()
     )
@@ -31,15 +29,15 @@ async def handle_analysis_callback(self, update: Update, context: ContextTypes.D
 
     await query.answer()
 
-    data = query.data
-
     schools = {
         "analysis_wyckoff": "📈 تحليل وايكوف",
         "analysis_harmonic": "🦋 تحليل هارمونيك",
         "analysis_classic": "📉 التحليل الكلاسيكي",
         "analysis_whales": "🐋 تحليل الحيتان",
-        "analysis_tvl": "🔒 تحليل TVL",
+        "analysis_tvl": "🔒 تحليل TVL"
     }
+
+    data = query.data
 
     if data in schools:
         context.user_data["analysis_school"] = data
@@ -65,25 +63,27 @@ async def handle_analysis_callback(self, update: Update, context: ContextTypes.D
     return ConversationHandler.END
 
 async def receive_symbol(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message is None or update.message.text is None:
+    if update.message is None or not update.message.text:
         return WAITING_SYMBOL
 
     school = context.user_data.get("analysis_school")
 
     if school is None:
         await update.message.reply_text(
-            "❌ لم يتم اختيار مدرسة التحليل.",
+            "❌ اختر مدرسة التحليل أولاً.",
             reply_markup=main_menu_keyboard()
         )
+
         return ConversationHandler.END
 
     symbol = update.message.text.strip().upper()
-    symbol = symbol.replace("USDT", "")
-    symbol = symbol.replace("/", "")
-    symbol = symbol.replace(" ", "")
+    symbol = symbol.replace("USDT", "").replace("/", "").replace(" ", "")
 
     if not symbol:
-        await update.message.reply_text("❌ أرسل رمز عملة صحيحاً مثل BTC")
+        await update.message.reply_text(
+            "❌ أرسل رمزاً صحيحاً مثل BTC"
+        )
+
         return WAITING_SYMBOL
 
     await update.message.reply_text(
@@ -108,6 +108,7 @@ async def receive_symbol(self, update: Update, context: ContextTypes.DEFAULT_TYP
                 await update.message.reply_text(
                     f"❌ لا توجد بيانات للعملة {symbol}"
                 )
+
                 return ConversationHandler.END
 
             if school == "analysis_wyckoff":
@@ -126,6 +127,7 @@ async def receive_symbol(self, update: Update, context: ContextTypes.DEFAULT_TYP
             await update.message.reply_text(
                 "❌ فشل إنشاء التحليل."
             )
+
             return ConversationHandler.END
 
         message = (
@@ -161,7 +163,7 @@ async def receive_symbol(self, update: Update, context: ContextTypes.DEFAULT_TYP
         logger.exception("Analysis error")
 
         await update.message.reply_text(
-            "❌ حدث خطأ أثناء تنفيذ التحليل."
+            "❌ حدث خطأ أثناء التحليل."
         )
 
         context.user_data.pop("analysis_school", None)
