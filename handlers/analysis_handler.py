@@ -15,11 +15,7 @@ def init(self, db, crypto_api):
 self.db = db
 self.crypto_api = crypto_api
 
-async def show_analysis_menu(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+async def show_analysis_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
 
     await message.reply_text(
@@ -28,11 +24,7 @@ async def show_analysis_menu(
         reply_markup=analysis_keyboard()
     )
 
-async def handle_analysis_callback(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+async def handle_analysis_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
     if query is None:
@@ -61,22 +53,11 @@ async def handle_analysis_callback(
 
         return WAITING_SYMBOL
 
-    if data == "analysis_cancel":
-        context.user_data.clear()
-
-        await query.edit_message_text(
-            "❌ تم إلغاء التحليل.",
-            reply_markup=main_menu_keyboard()
-        )
-
-        return ConversationHandler.END
-
     if data == "back_main":
         context.user_data.clear()
 
         await query.edit_message_text(
-            "🏠 القائمة الرئيسية\n\n"
-            "اختر الخدمة:",
+            "🏠 القائمة الرئيسية",
             reply_markup=main_menu_keyboard()
         )
 
@@ -84,40 +65,21 @@ async def handle_analysis_callback(
 
     return ConversationHandler.END
 
-async def receive_symbol(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    if update.message is None:
-        return WAITING_SYMBOL
-
-    if not update.message.text:
+async def receive_symbol(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message is None or not update.message.text:
         return WAITING_SYMBOL
 
     school = context.user_data.get("analysis_school")
 
     if school is None:
         await update.message.reply_text(
-            "❌ لم يتم اختيار مدرسة التحليل.",
-            reply_markup=main_menu_keyboard()
+            "❌ لم يتم اختيار مدرسة التحليل."
         )
 
         return ConversationHandler.END
 
     symbol = update.message.text.strip().upper()
-
-    symbol = symbol.replace("USDT", "")
-    symbol = symbol.replace("/", "")
-    symbol = symbol.replace(" ", "")
-
-    if not symbol:
-        await update.message.reply_text(
-            "❌ أرسل رمز عملة صحيحاً.\n\n"
-            "مثال: BTC"
-        )
-
-        return WAITING_SYMBOL
+    symbol = symbol.replace("USDT", "").replace("/", "").replace(" ", "")
 
     await update.message.reply_text(
         f"⏳ جاري تحليل {symbol}..."
@@ -128,14 +90,6 @@ async def receive_symbol(
 
         if school == "analysis_tvl":
             tvl_data = await self.crypto_api.get_tvl(symbol)
-
-            if tvl_data is None:
-                await update.message.reply_text(
-                    "❌ لا توجد بيانات TVL لهذه العملة."
-                )
-
-                return ConversationHandler.END
-
             result = tvl.analyze(tvl_data)
 
         else:
@@ -149,7 +103,6 @@ async def receive_symbol(
                 await update.message.reply_text(
                     f"❌ لا توجد بيانات للعملة {symbol}."
                 )
-
                 return ConversationHandler.END
 
             if school == "analysis_wyckoff":
@@ -168,7 +121,6 @@ async def receive_symbol(
             await update.message.reply_text(
                 "❌ فشل إنشاء التحليل."
             )
-
             return ConversationHandler.END
 
         message = (
@@ -180,63 +132,33 @@ async def receive_symbol(
         )
 
         if result.get("rsi") is not None:
-            message += (
-                f"\n\n📊 RSI: "
-                f"{result.get('rsi')}"
-            )
+            message += f"\n\n📊 RSI: {result.get('rsi')}"
 
         if result.get("support") is not None:
-            message += (
-                f"\n📉 الدعم: "
-                f"{result.get('support')}"
-            )
+            message += f"\n📉 الدعم: {result.get('support')}"
 
         if result.get("resistance") is not None:
-            message += (
-                f"\n📈 المقاومة: "
-                f"{result.get('resistance')}"
-            )
+            message += f"\n📈 المقاومة: {result.get('resistance')}"
 
         if result.get("volume_ratio") is not None:
-            message += (
-                f"\n🐋 قوة الحجم: "
-                f"{result.get('volume_ratio')}x"
-            )
+            message += f"\n🐋 قوة الحجم: {result.get('volume_ratio')}x"
 
         if result.get("pattern"):
-            message += (
-                f"\n🦋 النموذج: "
-                f"{result.get('pattern')}"
-            )
-
-        if result.get("tvl") is not None:
-            message += (
-                f"\n\n🔒 TVL: "
-                f"{result.get('tvl')}"
-            )
+            message += f"\n🦋 النموذج: {result.get('pattern')}"
 
         await update.message.reply_text(message)
 
-        context.user_data.pop(
-            "analysis_school",
-            None
-        )
+        context.user_data.pop("analysis_school", None)
 
         return ConversationHandler.END
 
     except Exception as error:
-        logger.exception(
-            "Analysis error: %s",
-            error
-        )
+        logger.exception("Analysis error: %s", error)
 
         await update.message.reply_text(
             "❌ حدث خطأ أثناء تنفيذ التحليل."
         )
 
-        context.user_data.pop(
-            "analysis_school",
-            None
-        )
+        context.user_data.pop("analysis_school", None)
 
-        return ConversationHandler.END        
+        return ConversationHandler.END
