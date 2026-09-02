@@ -16,47 +16,53 @@ class AnalysisHandler:
         self.db = db
         self.crypto_api = crypto_api
 
+
     async def show_analysis_menu(
         self,
         update: Update,
         context: ContextTypes.DEFAULT_TYPE
     ):
         await update.effective_message.reply_text(
-            "📊 مدارس التحليل\n\nاختر مدرسة التحليل:",
+            "📊 مدارس التحليل\n\n"
+            "اختر مدرسة التحليل:",
             reply_markup=analysis_keyboard()
         )
-    
 
-async def handle_analysis_callback(
-    self,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    query = update.callback_query
 
-    if query is None:
+    async def handle_analysis_callback(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        query = update.callback_query
+
+        if query is None:
+            return ConversationHandler.END
+
+        await query.answer()
+
+        data = query.data
+
+        schools = {
+            "analysis_wyckoff": "📈 تحليل وايكوف",
+            "analysis_harmonic": "🦋 تحليل هارمونيك",
+            "analysis_classic": "📉 التحليل الكلاسيكي",
+            "analysis_whales": "🐋 تحليل الحيتان",
+            "analysis_tvl": "🔒 تحليل TVL",
+        }
+
+        if data in schools:
+            context.user_data["analysis_school"] = data
+
+            await query.edit_message_text(
+                f"{schools[data]}\n\n"
+                "🪙 أرسل رمز العملة\n\n"
+                "مثال:\nBTC"
+            )
+
+            return WAITING_SYMBOL
+
         return ConversationHandler.END
-
-    await query.answer()
-
-    schools = {
-        "analysis_wyckoff": "📈 تحليل وايكوف",
-        "analysis_harmonic": "🦋 تحليل هارمونيك",
-        "analysis_classic": "📉 التحليل الكلاسيكي",
-        "analysis_whales": "🐋 تحليل الحيتان",
-        "analysis_tvl": "🔒 تحليل TVL",
-    }
-
-    if query.data in schools:
-        context.user_data["analysis_school"] = query.data
-
-        await query.edit_message_text(
-            f"{schools[query.data]}\n\n"
-            "🪙 أرسل رمز العملة للتحليل.\n\n"
-            "مثال: BTC"
-        )
-
-        return WAITING_SYMBOL
 
     if query.data == "back_main":
         context.user_data.clear()
