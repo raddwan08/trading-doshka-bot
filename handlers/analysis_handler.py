@@ -6,16 +6,12 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils.keyboards import analysis_keyboard, main_menu_keyboard
 from analysis import wyckoff, harmonic, classic, whales, tvl
 
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(name)
 
 WAITING_SYMBOL = 1
 
-
 class AnalysisHandler:
-    def __init__(self, db, crypto_api):
-        self.db = db
-        self.crypto_api = crypto_api
+def init(self, db, crypto_api):
 self.db = db
 self.crypto_api = crypto_api
 
