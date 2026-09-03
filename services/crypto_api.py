@@ -193,20 +193,142 @@ class CryptoAPI:
 
 
     async def get_tvl(
-        self,
-        symbol
-    ):
+    self,
+    symbol
+):
 
-        """
-        نسخة أولية لـ TVL
-        لاحقاً تربط مع DeFiLlama
-        """
+    symbol = symbol.upper()
+
+
+    protocols = {
+
+        "ETH": "ethereum",
+        "SOL": "solana",
+        "AVAX": "avalanche",
+        "MATIC": "polygon",
+        "ARB": "arbitrum",
+        "OP": "optimism",
+        "SEI": "sei",
+
+    }
+
+
+    protocol = protocols.get(
+        symbol
+    )
+
+
+    if not protocol:
+
+        logger.warning(
+            f"No TVL mapping for {symbol}"
+        )
+
+        return None
+
+
+    url = (
+        "https://api.llama.fi/v2/"
+        f"historicalChainTvl/{protocol}"
+    )
+
+
+    try:
+
+        async with aiohttp.ClientSession() as session:
+
+            async with session.get(
+                url
+            ) as response:
+
+
+                if response.status != 200:
+
+                    logger.error(
+                        f"DeFiLlama error: "
+                        f"{response.status}"
+                    )
+
+                    return None
+
+
+                data = await response.json()
+
+
+        if not data:
+
+            return None
+
+
+        tvl_history = []
+
+
+        for item in data:
+
+            tvl_history.append({
+
+                "date": item.get("date"),
+
+                "tvl": item.get("tvl", 0)
+
+            })
+
+
+        if not tvl_history:
+
+            return None
+
+
+        current_tvl = tvl_history[-1]["tvl"]
+
+
+        change_30d = 0
+
+
+        if len(tvl_history) >= 30:
+
+            old_tvl = tvl_history[-30]["tvl"]
+
+
+            if old_tvl > 0:
+
+                change_30d = (
+
+                    (
+                        current_tvl
+                        -
+                        old_tvl
+                    )
+
+                    /
+                    old_tvl
+
+                ) * 100
 
 
         return {
 
-            "tvl": 0,
+            "tvl":
+                current_tvl,
 
-            "tvl_change_30d": 0
+            "tvl_change_30d":
+                round(
+                    change_30d,
+                    2
+                ),
+
+            "history":
+                tvl_history
 
         }
+
+
+    except Exception as e:
+
+
+        logger.exception(
+            f"TVL error: {e}"
+        )
+
+
+        return None
