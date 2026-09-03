@@ -179,6 +179,35 @@ def __init__(
                 "❌ فشل إنشاء التحليل."
             )
 
+            
+# =========================
+# CREATE CHART
+# =========================
+
+chart_path = None
+
+
+if school != "analysis_tvl":
+
+    try:
+
+        chart_path = self.chart_service.create_chart(
+
+            symbol=symbol,
+
+            candles=candles,
+
+            school=school
+
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            f"Chart error: {e}"
+        )
+
+
             return ConversationHandler.END
 
         message = (
