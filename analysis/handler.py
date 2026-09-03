@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils.keyboards import analysis_keyboard, main_menu_keyboard
 from analysis import wyckoff, harmonic, classic, whales, tvl
 
+from services.chart_service import ChartService
 
 logger = logging.getLogger(__name__)
 
