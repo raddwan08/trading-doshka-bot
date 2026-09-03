@@ -248,7 +248,26 @@ if school != "analysis_tvl":
                 f"{result.get('pattern')}"
             )
 
-        await update.message.reply_text(message)
+        if chart_path and os.path.exists(chart_path):
+
+    with open(
+        chart_path,
+        "rb"
+    ) as chart:
+
+        await update.message.reply_photo(
+
+            photo=chart,
+
+            caption=message
+
+        )
+
+else:
+
+    await update.message.reply_text(
+        message
+    )
 
         context.user_data.pop(
             "analysis_school",
