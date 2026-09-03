@@ -48,9 +48,7 @@ class CryptoAPI:
 
                 async with session.get(url) as response:
 
-
                     data = await response.json()
-
 
 
             candles = []
@@ -58,32 +56,30 @@ class CryptoAPI:
 
             for item in data:
 
-    candles.append({
+                candles.append({
 
-        "time":
-            int(item[0]),
+                    "time":
+                        int(item[0]),
 
-        "open":
-            float(item[1]),
+                    "open":
+                        float(item[1]),
 
-        "high":
-            float(item[2]),
+                    "high":
+                        float(item[2]),
 
-        "low":
-            float(item[3]),
+                    "low":
+                        float(item[3]),
 
-        "close":
-            float(item[4]),
+                    "close":
+                        float(item[4]),
 
-        "volume":
-            float(item[5])
+                    "volume":
+                        float(item[5])
 
-    })
-
+                })
 
 
             return candles
-
 
 
         except Exception as e:
