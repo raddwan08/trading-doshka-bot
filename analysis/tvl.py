@@ -2,7 +2,7 @@ SCHOOL_NAME = "🔒 تحليل TVL"
 
 REQUIRES_CANDLES = False
 
-
+DATA_METHOD = "get_tvl"
 def analyze(data):
 
     if not data:
