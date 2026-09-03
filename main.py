@@ -812,6 +812,17 @@ def main():
 
     )
 
+# =====================
+# Futures Signals
+# =====================
+
+application.job_queue.run_repeating(
+
+    futures_service.send_signals,
+
+    interval=3600,
+
+    first=10
 
 
     # =====================
