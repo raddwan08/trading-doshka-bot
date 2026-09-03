@@ -782,7 +782,6 @@ def main():
     # Payment Monitor
     # =====================
 
-
     application.job_queue.run_repeating(
 
         payment_service.check_payments,
@@ -793,23 +792,25 @@ def main():
 
     )
 
-# =====================
-# Futures Signals
-# =====================
 
-application.job_queue.run_repeating(
+    # =====================
+    # Futures Signals
+    # =====================
 
-    futures_service.send_signals,
+    application.job_queue.run_repeating(
 
-    interval=3600,
+        futures_service.send_signals,
 
-    first=10
+        interval=3600,
 
-)
+        first=10
+
+    )
+
+
     # =====================
     # Error Handler
     # =====================
-
 
     application.add_error_handler(
 
@@ -818,13 +819,11 @@ application.job_queue.run_repeating(
     )
 
 
-
     logger.info(
 
         "🚀 Doshka Trading Pro Started"
 
     )
-
 
 
     application.run_polling(
