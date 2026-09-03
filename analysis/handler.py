@@ -14,9 +14,17 @@ WAITING_SYMBOL = 1
 
 
 class AnalysisHandler:
-    def __init__(self, db, crypto_api):
-        self.db = db
-        self.crypto_api = crypto_api
+def __init__(
+    self,
+    db,
+    crypto_api
+):
+
+    self.db = db
+
+    self.crypto_api = crypto_api
+
+    self.chart_service = ChartService()
 
     async def show_analysis_menu(
         self,
