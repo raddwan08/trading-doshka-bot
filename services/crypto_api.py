@@ -17,13 +17,9 @@ class CryptoAPI:
             "https://api.coingecko.com/api/v3"
         )
 
-        self.defillama_url = (
-            "https://api.llama.fi"
-        )
-
 
     # =====================================
-    # BINANCE CANDLES
+    # GET BINANCE CANDLES
     # =====================================
 
     async def get_klines(
@@ -33,8 +29,11 @@ class CryptoAPI:
         limit=100
     ):
 
-        symbol = symbol.upper() + "USDT"
-
+        symbol = (
+            symbol.upper()
+            .replace("USDT", "")
+            + "USDT"
+        )
 
         url = (
             f"{self.binance_url}/klines"
@@ -42,7 +41,6 @@ class CryptoAPI:
             f"&interval={interval}"
             f"&limit={limit}"
         )
-
 
         try:
 
@@ -52,29 +50,25 @@ class CryptoAPI:
                     url
                 ) as response:
 
-
                     if response.status != 200:
 
                         logger.error(
-                            "Binance error status: %s",
-                            response.status
+                            f"Binance status error: "
+                            f"{response.status}"
                         )
 
                         return []
 
-
                     data = await response.json()
 
 
-            # Binance قد يعيد رسالة خطأ بدلاً من قائمة
             if not isinstance(
                 data,
                 list
             ):
 
                 logger.error(
-                    "Invalid Binance response: %s",
-                    data
+                    f"Invalid Binance response: {data}"
                 )
 
                 return []
@@ -84,11 +78,6 @@ class CryptoAPI:
 
 
             for item in data:
-
-                if len(item) < 6:
-
-                    continue
-
 
                 candles.append({
 
@@ -119,21 +108,27 @@ class CryptoAPI:
         except Exception as error:
 
             logger.exception(
-                "Binance error: %s",
-                error
+                f"Binance error: {error}"
             )
 
             return []
 
 
     # =====================================
-    # COIN DATA
+    # GET BASIC COIN DATA
     # =====================================
 
     async def get_coin_data(
         self,
         symbol
     ):
+
+        symbol = (
+            symbol.upper()
+            .replace("USDT", "")
+            .replace("/", "")
+            .strip()
+        )
 
 
         ids = {
@@ -156,6 +151,9 @@ class CryptoAPI:
             "MATIC":
                 "matic-network",
 
+            "POL":
+                "matic-network",
+
             "ARB":
                 "arbitrum",
 
@@ -169,11 +167,15 @@ class CryptoAPI:
 
 
         coin_id = ids.get(
-            symbol.upper()
+            symbol
         )
 
 
         if not coin_id:
+
+            logger.warning(
+                f"No CoinGecko mapping for {symbol}"
+            )
 
             return None
 
@@ -199,12 +201,11 @@ class CryptoAPI:
                     url
                 ) as response:
 
-
                     if response.status != 200:
 
                         logger.error(
-                            "CoinGecko error status: %s",
-                            response.status
+                            f"CoinGecko status error: "
+                            f"{response.status}"
                         )
 
                         return None
@@ -226,10 +227,10 @@ class CryptoAPI:
             return {
 
                 "name":
-                    symbol.upper(),
+                    symbol,
 
                 "symbol":
-                    symbol.upper(),
+                    symbol,
 
                 "current_price":
                     coin.get(
@@ -248,17 +249,15 @@ class CryptoAPI:
 
         except Exception as error:
 
-
             logger.exception(
-                "CoinGecko error: %s",
-                error
+                f"CoinGecko error: {error}"
             )
 
             return None
 
 
     # =====================================
-    # TVL DATA
+    # GET TVL DATA
     # =====================================
 
     async def get_tvl(
@@ -266,20 +265,15 @@ class CryptoAPI:
         symbol
     ):
 
-        """
-        جلب TVL من DeFiLlama.
-
-        يرجع:
-        - tvl
-        - tvl_change_30d
-        - history
-        """
+        symbol = (
+            symbol.upper()
+            .replace("USDT", "")
+            .replace("/", "")
+            .strip()
+        )
 
 
-        symbol = symbol.upper()
-
-
-        chains = {
+        protocols = {
 
             "ETH":
                 "ethereum",
@@ -291,6 +285,9 @@ class CryptoAPI:
                 "avalanche",
 
             "MATIC":
+                "polygon",
+
+            "POL":
                 "polygon",
 
             "ARB":
@@ -305,25 +302,25 @@ class CryptoAPI:
         }
 
 
-        chain = chains.get(
+        protocol = protocols.get(
             symbol
         )
 
 
-        if not chain:
+        if not protocol:
 
             logger.warning(
-                "No TVL mapping for %s",
-                symbol
+                f"No TVL mapping for {symbol}"
             )
 
             return None
 
 
         url = (
-            f"{self.defillama_url}"
-            f"/v2/historicalChainTvl/"
-            f"{chain}"
+
+            "https://api.llama.fi/v2/"
+            f"historicalChainTvl/{protocol}"
+
         )
 
 
@@ -339,8 +336,8 @@ class CryptoAPI:
                     if response.status != 200:
 
                         logger.error(
-                            "DeFiLlama error status: %s",
-                            response.status
+                            f"DeFiLlama status error: "
+                            f"{response.status}"
                         )
 
                         return None
@@ -349,19 +346,11 @@ class CryptoAPI:
                     data = await response.json()
 
 
-            if not isinstance(
-                data,
-                list
-            ):
-
-                logger.error(
-                    "Invalid DeFiLlama response"
-                )
-
-                return None
-
-
             if not data:
+
+                logger.warning(
+                    f"No TVL data for {symbol}"
+                )
 
                 return None
 
@@ -371,30 +360,17 @@ class CryptoAPI:
 
             for item in data:
 
-
-                tvl_value = item.get(
-                    "tvl"
-                )
-
-
-                date_value = item.get(
-                    "date"
-                )
-
-
-                if tvl_value is None:
-
-                    continue
-
-
                 tvl_history.append({
 
                     "date":
-                        date_value,
+                        item.get("date"),
 
                     "tvl":
                         float(
-                            tvl_value
+                            item.get(
+                                "tvl",
+                                0
+                            )
                         )
 
                 })
@@ -405,30 +381,32 @@ class CryptoAPI:
                 return None
 
 
-            # آخر قيمة
             current_tvl = (
 
-                tvl_history[-1][
-                    "tvl"
-                ]
+                tvl_history[-1]
+                .get(
+                    "tvl",
+                    0
+                )
 
             )
 
 
-            # نسبة التغير خلال 30 يوماً
             change_30d = 0
 
 
             if len(
                 tvl_history
-            ) >= 31:
+            ) >= 30:
 
 
                 old_tvl = (
 
-                    tvl_history[-31][
-                        "tvl"
-                    ]
+                    tvl_history[-30]
+                    .get(
+                        "tvl",
+                        0
+                    )
 
                 )
 
@@ -439,21 +417,21 @@ class CryptoAPI:
                     change_30d = (
 
                         (
+
                             current_tvl
                             -
                             old_tvl
+
                         )
 
                         /
+
                         old_tvl
 
                     ) * 100
 
 
             return {
-
-                "symbol":
-                    symbol,
 
                 "tvl":
                     current_tvl,
@@ -472,308 +450,8 @@ class CryptoAPI:
 
         except Exception as error:
 
-
             logger.exception(
-                "TVL error: %s",
-                error
-            )
-
-
-            return None        url = (
-            f"{self.binance_url}/klines"
-            f"?symbol={symbol}"
-            f"&interval={interval}"
-            f"&limit={limit}"
-        )
-
-
-        try:
-
-            async with aiohttp.ClientSession() as session:
-
-                async with session.get(url) as response:
-
-                    data = await response.json()
-
-
-            candles = []
-
-
-            for item in data:
-
-                candles.append({
-
-                    "time":
-                        int(item[0]),
-
-                    "open":
-                        float(item[1]),
-
-                    "high":
-                        float(item[2]),
-
-                    "low":
-                        float(item[3]),
-
-                    "close":
-                        float(item[4]),
-
-                    "volume":
-                        float(item[5])
-
-                })
-
-
-            return candles
-
-
-        except Exception as e:
-
-            logger.error(
-                f"Binance error: {e}"
-            )
-
-            return []
-
-
-
-
-    async def get_coin_data(
-        self,
-        symbol
-    ):
-
-
-        """
-        معلومات السعر
-        """
-
-
-        ids = {
-
-            "BTC":
-                "bitcoin",
-
-            "ETH":
-                "ethereum",
-
-            "BNB":
-                "binancecoin",
-
-            "SOL":
-                "solana"
-
-        }
-
-
-        coin_id = ids.get(
-            symbol.upper()
-        )
-
-
-        if not coin_id:
-
-            return None
-
-
-
-        url = (
-
-            f"{self.coingecko_url}/simple/price"
-
-            f"?ids={coin_id}"
-
-            "&vs_currencies=usd"
-
-            "&include_24hr_change=true"
-
-        )
-
-
-
-        try:
-
-            async with aiohttp.ClientSession() as session:
-
-                async with session.get(url) as response:
-
-                    data = await response.json()
-
-
-
-            coin = data[coin_id]
-
-
-            return {
-
-                "name":
-                    symbol.upper(),
-
-                "symbol":
-                    symbol.upper(),
-
-                "current_price":
-                    coin["usd"],
-
-                "price_change_24h":
-                    coin.get(
-                        "usd_24h_change",
-                        0
-                    )
-
-            }
-
-
-
-        except Exception as e:
-
-
-            logger.error(
-                f"CoinGecko error: {e}"
+                f"TVL error: {error}"
             )
 
             return None
-
-
-
-
-    async def get_tvl(
-    self,
-    symbol
-):
-
-    symbol = symbol.upper()
-
-
-    protocols = {
-
-        "ETH": "ethereum",
-        "SOL": "solana",
-        "AVAX": "avalanche",
-        "MATIC": "polygon",
-        "ARB": "arbitrum",
-        "OP": "optimism",
-        "SEI": "sei",
-
-    }
-
-
-    protocol = protocols.get(
-        symbol
-    )
-
-
-    if not protocol:
-
-        logger.warning(
-            f"No TVL mapping for {symbol}"
-        )
-
-        return None
-
-
-    url = (
-        "https://api.llama.fi/v2/"
-        f"historicalChainTvl/{protocol}"
-    )
-
-
-    try:
-
-        async with aiohttp.ClientSession() as session:
-
-            async with session.get(
-                url
-            ) as response:
-
-
-                if response.status != 200:
-
-                    logger.error(
-                        f"DeFiLlama error: "
-                        f"{response.status}"
-                    )
-
-                    return None
-
-
-                data = await response.json()
-
-
-        if not data:
-
-            return None
-
-
-        tvl_history = []
-
-
-        for item in data:
-
-            tvl_history.append({
-
-                "date": item.get("date"),
-
-                "tvl": item.get("tvl", 0)
-
-            })
-
-
-        if not tvl_history:
-
-            return None
-
-
-        current_tvl = tvl_history[-1]["tvl"]
-
-
-        change_30d = 0
-
-
-        if len(tvl_history) >= 30:
-
-            old_tvl = tvl_history[-30]["tvl"]
-
-
-            if old_tvl > 0:
-
-                change_30d = (
-
-                    (
-                        current_tvl
-                        -
-                        old_tvl
-                    )
-
-                    /
-                    old_tvl
-
-                ) * 100
-
-
-        return {
-
-            "tvl":
-                current_tvl,
-
-            "tvl_change_30d":
-                round(
-                    change_30d,
-                    2
-                ),
-
-            "history":
-                tvl_history
-
-        }
-
-
-    except Exception as e:
-
-
-        logger.exception(
-            f"TVL error: {e}"
-        )
-
-
-        return None
