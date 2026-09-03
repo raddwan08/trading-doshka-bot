@@ -1,5 +1,7 @@
 import os
 import logging
+import pkgutil
+import importlib
 
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -9,25 +11,15 @@ from utils.keyboards import (
     main_menu_keyboard
 )
 
-from analysis import (
-    wyckoff,
-    harmonic,
-    classic,
-    whales,
-    tvl
-)
-
 from services.chart_service import ChartService
 
 
 logger = logging.getLogger(__name__)
 
-
 WAITING_SYMBOL = 1
 
 
 class AnalysisHandler:
-
 
     def __init__(
         self,
@@ -36,15 +28,73 @@ class AnalysisHandler:
     ):
 
         self.db = db
-
         self.crypto_api = crypto_api
-
         self.chart_service = ChartService()
 
+        self.analysis_modules = (
+            self.load_analysis_modules()
+        )
 
-    # =========================
+
+    # =====================================
+    # AUTO LOAD ANALYSIS SCHOOLS
+    # =====================================
+
+    def load_analysis_modules(self):
+
+        modules = {}
+
+        import analysis
+
+        for module_info in pkgutil.iter_modules(
+            analysis.__path__
+        ):
+
+            module_name = module_info.name
+
+
+            # تجاهل الملفات الخاصة
+            if module_name.startswith("_"):
+
+                continue
+
+
+            try:
+
+                module = importlib.import_module(
+                    f"analysis.{module_name}"
+                )
+
+
+                # يجب أن تحتوي المدرسة على analyze
+                if hasattr(
+                    module,
+                    "analyze"
+                ):
+
+                    modules[module_name] = module
+
+
+                    logger.info(
+                        f"Loaded analysis school: "
+                        f"{module_name}"
+                    )
+
+
+            except Exception as error:
+
+                logger.exception(
+                    f"Failed loading analysis "
+                    f"school {module_name}: {error}"
+                )
+
+
+        return modules
+
+
+    # =====================================
     # SHOW ANALYSIS MENU
-    # =========================
+    # =====================================
 
     async def show_analysis_menu(
         self,
@@ -65,9 +115,9 @@ class AnalysisHandler:
         )
 
 
-    # =========================
-    # ANALYSIS CALLBACK
-    # =========================
+    # =====================================
+    # HANDLE SCHOOL SELECTION
+    # =====================================
 
     async def handle_analysis_callback(
         self,
@@ -89,49 +139,9 @@ class AnalysisHandler:
         data = query.data
 
 
-        schools = {
-
-            "analysis_wyckoff":
-                "📈 تحليل وايكوف",
-
-            "analysis_harmonic":
-                "🦋 تحليل هارمونيك",
-
-            "analysis_classic":
-                "📉 التحليل الكلاسيكي",
-
-            "analysis_whales":
-                "🐋 تحليل الحيتان",
-
-            "analysis_tvl":
-                "🔒 تحليل TVL",
-
-        }
-
-
-        # اختيار مدرسة التحليل
-
-        if data in schools:
-
-            context.user_data[
-                "analysis_school"
-            ] = data
-
-
-            await query.edit_message_text(
-
-                f"{schools[data]}\n\n"
-                "🪙 أرسل رمز العملة للتحليل\n\n"
-                "مثال:\n"
-                "BTC"
-
-            )
-
-
-            return WAITING_SYMBOL
-
-
-        # إلغاء التحليل
+        # =================================
+        # CANCEL
+        # =================================
 
         if data == "analysis_cancel":
 
@@ -150,7 +160,9 @@ class AnalysisHandler:
             return ConversationHandler.END
 
 
-        # العودة للقائمة الرئيسية
+        # =================================
+        # BACK TO MAIN
+        # =================================
 
         if data == "back_main":
 
@@ -169,12 +181,77 @@ class AnalysisHandler:
             return ConversationHandler.END
 
 
-        return ConversationHandler.END
+        # =================================
+        # ANALYSIS SCHOOL
+        # =================================
+
+        if not data.startswith(
+            "analysis_"
+        ):
+
+            return ConversationHandler.END
 
 
-    # =========================
+        school_name = data.replace(
+            "analysis_",
+            ""
+        )
+
+
+        if school_name not in (
+            self.analysis_modules
+        ):
+
+            await query.edit_message_text(
+
+                "❌ مدرسة التحليل غير متوفرة."
+
+            )
+
+
+            return ConversationHandler.END
+
+
+        module = self.analysis_modules[
+            school_name
+        ]
+
+
+        # اسم المدرسة من الملف نفسه
+        school_title = getattr(
+
+            module,
+
+            "SCHOOL_NAME",
+
+            school_name.title()
+
+        )
+
+
+        context.user_data[
+            "analysis_school"
+        ] = school_name
+
+
+        await query.edit_message_text(
+
+            f"📊 {school_title}\n\n"
+
+            "🪙 أرسل رمز العملة للتحليل\n\n"
+
+            "مثال:\n"
+            "BTC"
+
+        )
+
+
+        return WAITING_SYMBOL
+
+
+    # =====================================
     # RECEIVE SYMBOL
-    # =========================
+    # =====================================
 
     async def receive_symbol(
         self,
@@ -193,14 +270,14 @@ class AnalysisHandler:
             return WAITING_SYMBOL
 
 
-        # الحصول على مدرسة التحليل
+        school_name = context.user_data.get(
 
-        school = context.user_data.get(
             "analysis_school"
+
         )
 
 
-        if school is None:
+        if not school_name:
 
             await update.message.reply_text(
 
@@ -214,7 +291,32 @@ class AnalysisHandler:
             return ConversationHandler.END
 
 
-        # تنظيف رمز العملة
+        # =================================
+        # GET MODULE
+        # =================================
+
+        module = self.analysis_modules.get(
+
+            school_name
+
+        )
+
+
+        if module is None:
+
+            await update.message.reply_text(
+
+                "❌ مدرسة التحليل غير موجودة."
+
+            )
+
+
+            return ConversationHandler.END
+
+
+        # =================================
+        # CLEAN SYMBOL
+        # =================================
 
         symbol = (
             update.message.text
@@ -225,9 +327,18 @@ class AnalysisHandler:
 
         symbol = (
             symbol
-            .replace("USDT", "")
-            .replace("/", "")
-            .replace(" ", "")
+            .replace(
+                "USDT",
+                ""
+            )
+            .replace(
+                "/",
+                ""
+            )
+            .replace(
+                " ",
+                ""
+            )
         )
 
 
@@ -243,7 +354,9 @@ class AnalysisHandler:
             return WAITING_SYMBOL
 
 
-        # رسالة التحميل
+        # =================================
+        # LOADING
+        # =================================
 
         await update.message.reply_text(
 
@@ -255,47 +368,25 @@ class AnalysisHandler:
         try:
 
 
-            result = None
+            # =============================
+            # GET DATA
+            # =============================
 
-            candles = None
-
-
-            # =========================
-            # TVL ANALYSIS
-            # =========================
-
-            if school == "analysis_tvl":
+            candles = []
 
 
-                tvl_data = (
-                    await self.crypto_api.get_tvl(
-                        symbol
-                    )
-                )
+            requires_candles = getattr(
+
+                module,
+
+                "REQUIRES_CANDLES",
+
+                True
+
+            )
 
 
-                if not tvl_data:
-
-                    await update.message.reply_text(
-
-                        "❌ لا توجد بيانات TVL لهذه العملة."
-
-                    )
-
-
-                    return ConversationHandler.END
-
-
-                result = tvl.analyze(
-                    tvl_data
-                )
-
-
-            # =========================
-            # PRICE ANALYSIS
-            # =========================
-
-            else:
+            if requires_candles:
 
 
                 candles = (
@@ -315,7 +406,8 @@ class AnalysisHandler:
 
                     await update.message.reply_text(
 
-                        f"❌ لا توجد بيانات للعملة {symbol}."
+                        f"❌ لا توجد بيانات للعملة "
+                        f"{symbol}."
 
                     )
 
@@ -323,53 +415,51 @@ class AnalysisHandler:
                     return ConversationHandler.END
 
 
-                # =====================
-                # WYCKOFF
-                # =====================
+                # =========================
+                # RUN ANALYSIS
+                # =========================
 
-                if school == "analysis_wyckoff":
+                result = module.analyze(
 
-                    result = wyckoff.analyze(
-                        candles
+                    candles
+
+                )
+
+
+            else:
+
+
+                # =========================
+                # NON CANDLE ANALYSIS
+                # Example: TVL
+                # =========================
+
+                if school_name == "tvl":
+
+                    analysis_data = (
+                        await self.crypto_api.get_tvl(
+
+                            symbol
+
+                        )
                     )
 
 
-                # =====================
-                # HARMONIC
-                # =====================
+                else:
 
-                elif school == "analysis_harmonic":
-
-                    result = harmonic.analyze(
-                        candles
-                    )
+                    analysis_data = None
 
 
-                # =====================
-                # CLASSIC
-                # =====================
+                result = module.analyze(
 
-                elif school == "analysis_classic":
+                    analysis_data
 
-                    result = classic.analyze(
-                        candles
-                    )
+                )
 
 
-                # =====================
-                # WHALES
-                # =====================
-
-                elif school == "analysis_whales":
-
-                    result = whales.analyze(
-                        candles
-                    )
-
-
-            # =========================
-            # CHECK RESULT
-            # =========================
+            # =============================
+            # VALIDATE RESULT
+            # =============================
 
             if not result:
 
@@ -383,50 +473,9 @@ class AnalysisHandler:
                 return ConversationHandler.END
 
 
-            # =========================
-            # CREATE CHART
-            # =========================
-
-            chart_path = None
-
-
-            if (
-                school != "analysis_tvl"
-                and candles
-            ):
-
-
-                try:
-
-
-                    chart_path = (
-    self.chart_service.create_chart(
-
-        symbol=symbol,
-
-        candles=candles,
-
-        school=school,
-
-        result=result
-
-    )
-)
-
-
-                except Exception as e:
-
-
-                    logger.exception(
-
-                        f"Chart error: {e}"
-
-                    )
-
-
-            # =========================
-            # CREATE MESSAGE
-            # =========================
+            # =============================
+            # BUILD MESSAGE
+            # =============================
 
             message = (
 
@@ -435,7 +484,7 @@ class AnalysisHandler:
                 f"🪙 العملة: {symbol}\n"
 
                 f"🏫 المدرسة: "
-                f"{result.get('school', '')}\n\n"
+                f"{result.get('school', school_name)}\n\n"
 
                 f"🎯 الإشارة: "
                 f"{result.get('signal', 'WAIT')}\n\n"
@@ -445,43 +494,42 @@ class AnalysisHandler:
             )
 
 
-            # RSI
+            # =============================
+            # OPTIONAL RESULT DATA
+            # =============================
 
             if result.get("rsi") is not None:
 
                 message += (
 
                     f"\n\n📊 RSI: "
-                    f"{result.get('rsi')}"
+
+                    f"{result['rsi']}"
 
                 )
 
-
-            # SUPPORT
 
             if result.get("support") is not None:
 
                 message += (
 
                     f"\n📉 الدعم: "
-                    f"{result.get('support')}"
+
+                    f"{result['support']}"
 
                 )
 
-
-            # RESISTANCE
 
             if result.get("resistance") is not None:
 
                 message += (
 
                     f"\n📈 المقاومة: "
-                    f"{result.get('resistance')}"
+
+                    f"{result['resistance']}"
 
                 )
 
-
-            # VOLUME
 
             if result.get(
                 "volume_ratio"
@@ -491,12 +539,10 @@ class AnalysisHandler:
 
                     f"\n🐋 قوة الحجم: "
 
-                    f"{result.get('volume_ratio')}x"
+                    f"{result['volume_ratio']}x"
 
                 )
 
-
-            # PATTERN
 
             if result.get("pattern"):
 
@@ -504,14 +550,49 @@ class AnalysisHandler:
 
                     f"\n🦋 النموذج: "
 
-                    f"{result.get('pattern')}"
+                    f"{result['pattern']}"
 
                 )
 
 
-            # =========================
+            # =============================
+            # CREATE CHART
+            # =============================
+
+            chart_path = None
+
+
+            try:
+
+
+                chart_path = (
+                    self.chart_service.create_chart(
+
+                        symbol=symbol,
+
+                        candles=candles,
+
+                        school=school_name,
+
+                        analysis_result=result
+
+                    )
+                )
+
+
+            except Exception as error:
+
+
+                logger.exception(
+
+                    f"Chart error: {error}"
+
+                )
+
+
+            # =============================
             # SEND CHART
-            # =========================
+            # =============================
 
             if (
 
@@ -544,19 +625,6 @@ class AnalysisHandler:
                     )
 
 
-                # حذف الملف بعد الإرسال
-
-                try:
-
-                    os.remove(
-                        chart_path
-                    )
-
-                except Exception:
-
-                    pass
-
-
             else:
 
 
@@ -567,9 +635,9 @@ class AnalysisHandler:
                 )
 
 
-            # =========================
-            # CLEAR USER DATA
-            # =========================
+            # =============================
+            # CLEAN USER DATA
+            # =============================
 
             context.user_data.pop(
 
