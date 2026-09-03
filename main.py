@@ -805,7 +805,7 @@ application.job_queue.run_repeating(
 
     first=10
 
-
+)
     # =====================
     # Error Handler
     # =====================
