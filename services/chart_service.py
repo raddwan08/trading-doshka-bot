@@ -1,113 +1,235 @@
 import os
 
 import pandas as pd
+
 import mplfinance as mpf
 
 
 class ChartService:
 
+
     def create_chart(
+
         self,
+
         symbol,
+
         candles,
-        school
+
+        school,
+
+        result=None
+
     ):
 
-        data = []
 
-
-        for candle in candles:
-
-            data.append({
-
-                "time":
-                    pd.to_datetime(
-                        candle["time"],
-                        unit="ms"
-                    ),
-
-                "Open":
-                    float(
-                        candle["open"]
-                    ),
-
-                "High":
-                    float(
-                        candle["high"]
-                    ),
-
-                "Low":
-                    float(
-                        candle["low"]
-                    ),
-
-                "Close":
-                    float(
-                        candle["close"]
-                    ),
-
-                "Volume":
-                    float(
-                        candle["volume"]
-                    )
-
-            })
-
+        # =========================
+        # تحويل البيانات
+        # =========================
 
         df = pd.DataFrame(
-            data
+            candles
         )
+
+
+        # التأكد من وجود الوقت
+
+        if "time" not in df.columns:
+
+            df["time"] = pd.date_range(
+
+                end=pd.Timestamp.now(),
+
+                periods=len(df),
+
+                freq="4H"
+
+            )
+
+
+        else:
+
+            df["time"] = pd.to_datetime(
+
+                df["time"],
+
+                unit="ms"
+
+            )
 
 
         df.set_index(
+
             "time",
+
             inplace=True
+
         )
 
 
-        os.makedirs(
-            "charts",
-            exist_ok=True
+        # =========================
+        # الأعمدة المطلوبة
+        # =========================
+
+        df = df.rename(
+
+            columns={
+
+                "open": "Open",
+
+                "high": "High",
+
+                "low": "Low",
+
+                "close": "Close",
+
+                "volume": "Volume"
+
+            }
+
         )
 
+
+        # =========================
+        # اسم الملف
+        # =========================
 
         filename = (
-            f"charts/"
-            f"{symbol}_{school}.png"
+
+            f"/tmp/"
+
+            f"{symbol}_"
+
+            f"{school}_"
+
+            f"chart.png"
+
         )
 
+
+        # =========================
+        # خطوط التحليل
+        # =========================
+
+        hlines = []
+
+
+        # الدعم
+
+        if result:
+
+            support = result.get(
+                "support"
+            )
+
+
+            if support is not None:
+
+                hlines.append(
+                    support
+                )
+
+
+            # المقاومة
+
+            resistance = result.get(
+                "resistance"
+            )
+
+
+            if resistance is not None:
+
+                hlines.append(
+                    resistance
+                )
+
+
+        # =========================
+        # عنوان المدرسة
+        # =========================
+
+        school_names = {
+
+            "analysis_wyckoff":
+                "Wyckoff",
+
+            "analysis_harmonic":
+                "Harmonic",
+
+            "analysis_classic":
+                "Classic",
+
+            "analysis_whales":
+                "Whales"
+
+        }
+
+
+        school_name = school_names.get(
+
+            school,
+
+            school
+
+        )
+
+
+        # =========================
+        # إعداد الرسم
+        # =========================
+
+        plot_kwargs = {
+
+            "type": "candle",
+
+            "volume": True,
+
+            "title":
+                f"{symbol} Analysis - "
+                f"{school_name}",
+
+            "ylabel":
+                "Price",
+
+            "ylabel_lower":
+                "Volume",
+
+            "figsize":
+                (14, 9),
+
+            "savefig":
+                filename
+
+        }
+
+
+        # إضافة الدعم والمقاومة
+
+        if hlines:
+
+            plot_kwargs["hlines"] = {
+
+                "hlines":
+                    hlines,
+
+                "linewidths":
+                    [1.5] * len(hlines),
+
+                "alpha":
+                    0.8
+
+            }
+
+
+        # =========================
+        # رسم الشارت
+        # =========================
 
         mpf.plot(
 
             df,
 
-            type="candle",
-
-            volume=True,
-
-            style="yahoo",
-
-            title=(
-                f"{symbol} Analysis - "
-                f"{school.replace('analysis_', '').title()}"
-            ),
-
-            ylabel="Price",
-
-            figsize=(
-                12,
-                8
-            ),
-
-            savefig=dict(
-
-                fname=filename,
-
-                dpi=150,
-
-                bbox_inches="tight"
-
-            )
+            **plot_kwargs
 
         )
 
