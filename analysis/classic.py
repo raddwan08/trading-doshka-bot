@@ -1,32 +1,53 @@
 import numpy as np
 
 
-def calculate_rsi(closes, period=14):
+SCHOOL_NAME = "📉 التحليل الكلاسيكي"
+
+REQUIRES_CANDLES = True
+
+
+# =====================================
+# RSI
+# =====================================
+
+def calculate_rsi(
+    closes,
+    period=14
+):
+
+    closes = np.array(
+        closes,
+        dtype=float
+    )
 
     if len(closes) < period + 1:
-        return 50
+
+        return 50.0
 
 
-    deltas = np.diff(closes)
+    deltas = np.diff(
+        closes
+    )
 
-    gains = []
-    losses = []
+
+    gains = np.where(
+        deltas > 0,
+        deltas,
+        0
+    )
 
 
-    for d in deltas:
-
-        if d >= 0:
-            gains.append(d)
-            losses.append(0)
-
-        else:
-            gains.append(0)
-            losses.append(abs(d))
+    losses = np.where(
+        deltas < 0,
+        -deltas,
+        0
+    )
 
 
     avg_gain = np.mean(
         gains[-period:]
     )
+
 
     avg_loss = np.mean(
         losses[-period:]
@@ -34,112 +55,238 @@ def calculate_rsi(closes, period=14):
 
 
     if avg_loss == 0:
-        return 100
+
+        return 100.0
 
 
     rs = avg_gain / avg_loss
+
 
     rsi = 100 - (
         100 / (1 + rs)
     )
 
-    return rsi
 
-
-
-def ema(values, period):
-
-    if len(values) < period:
-        return values[-1]
-
-
-    return np.mean(
-        values[-period:]
+    return float(
+        rsi
     )
 
 
+# =====================================
+# EMA SERIES
+# =====================================
+
+def calculate_ema(
+    values,
+    period
+):
+
+    values = np.array(
+        values,
+        dtype=float
+    )
+
+
+    if len(values) == 0:
+
+        return []
+
+
+    ema_values = []
+
+    multiplier = (
+        2 / (period + 1)
+    )
+
+
+    current_ema = values[0]
+
+    ema_values.append(
+        float(current_ema)
+    )
+
+
+    for price in values[1:]:
+
+        current_ema = (
+
+            (
+                price -
+                current_ema
+            )
+
+            * multiplier
+
+            +
+
+            current_ema
+
+        )
+
+
+        ema_values.append(
+            float(current_ema)
+        )
+
+
+    return ema_values
+
+
+# =====================================
+# SUPPORT / RESISTANCE
+# =====================================
 
 def find_support_resistance(
     highs,
-    lows
+    lows,
+    period=20
 ):
 
-    resistance = max(
-        highs[-20:]
+    recent_highs = (
+        highs[-period:]
     )
+
+
+    recent_lows = (
+        lows[-period:]
+    )
+
 
     support = min(
-        lows[-20:]
+        recent_lows
     )
 
 
-    return support, resistance
+    resistance = max(
+        recent_highs
+    )
 
 
+    return (
 
-def analyze(candles):
+        float(support),
+
+        float(resistance)
+
+    )
 
 
-    if len(candles) < 50:
+# =====================================
+# MAIN ANALYSIS
+# =====================================
+
+def analyze(
+    candles
+):
+
+    if not candles or len(candles) < 50:
 
         return {
+
+            "school": "Classic",
+
             "signal": "WAIT",
-            "message": "بيانات غير كافية"
+
+            "message": (
+                "بيانات غير كافية "
+                "لإجراء التحليل الكلاسيكي."
+            )
+
         }
 
 
-
     closes = np.array(
+
         [
-            float(x["close"])
-            for x in candles
+
+            float(
+                candle["close"]
+            )
+
+            for candle in candles
+
         ]
+
     )
 
 
-    highs = [
-        float(x["high"])
-        for x in candles
-    ]
+    highs = np.array(
+
+        [
+
+            float(
+                candle["high"]
+            )
+
+            for candle in candles
+
+        ]
+
+    )
 
 
-    lows = [
-        float(x["low"])
-        for x in candles
-    ]
+    lows = np.array(
+
+        [
+
+            float(
+                candle["low"]
+            )
+
+            for candle in candles
+
+        ]
+
+    )
 
 
-
-    current = closes[-1]
-
+    # =================================
+    # INDICATORS
+    # =================================
 
     rsi = calculate_rsi(
         closes
     )
 
 
-    ema20 = ema(
+    ema20_series = calculate_ema(
         closes,
         20
     )
 
-    ema50 = ema(
+
+    ema50_series = calculate_ema(
         closes,
         50
     )
 
 
+    ema20 = ema20_series[-1]
+
+    ema50 = ema50_series[-1]
+
+
+    current_price = float(
+        closes[-1]
+    )
+
+
     support, resistance = (
         find_support_resistance(
+
             highs,
+
             lows
+
         )
     )
 
 
+    # =================================
+    # SCORE
+    # =================================
 
     score = 0
-
 
 
     # RSI
@@ -148,71 +295,109 @@ def analyze(candles):
 
         score += 2
 
+
     elif rsi > 70:
 
         score -= 2
 
 
-
-    # EMA trend
+    # EMA TREND
 
     if ema20 > ema50:
 
         score += 2
+
 
     else:
 
         score -= 2
 
 
+    # PRICE POSITION
 
-    # Price location
-
-    if current > ema20:
+    if current_price > ema20:
 
         score += 1
+
 
     else:
 
         score -= 1
 
 
+    # =================================
+    # SIGNAL
+    # =================================
+
+    target = None
+
+    stop_loss = None
 
 
     if score >= 3:
 
         signal = "BUY"
+
+
         message = (
-            "📈 الاتجاه صاعد\n"
-            "RSI و EMA يدعمان الشراء"
+
+            "📈 الاتجاه العام صاعد.\n"
+            "📊 السعر أعلى المتوسطات المتحركة.\n"
+            "🚀 المؤشرات تدعم احتمالية الشراء."
+
         )
+
+
+        target = resistance
+
+
+        stop_loss = support
 
 
     elif score <= -3:
 
         signal = "SELL"
 
+
         message = (
-            "📉 الاتجاه هابط\n"
-            "ضغط بيع واضح"
+
+            "📉 الاتجاه العام هابط.\n"
+            "📊 السعر تحت المتوسطات المتحركة.\n"
+            "⚠️ ضغط البيع واضح."
+
         )
+
+
+        target = support
+
+
+        stop_loss = resistance
 
 
     else:
 
         signal = "WAIT"
 
+
         message = (
-            "📊 لا توجد إشارة قوية"
+
+            "📊 السوق في حالة تذبذب.\n"
+            "⚖️ لا توجد إشارة قوية حالياً."
+
         )
 
 
+    # =================================
+    # RESULT
+    # =================================
 
     return {
 
         "school": "Classic",
 
         "signal": signal,
+
+        "message": message,
 
         "rsi": round(
             rsi,
@@ -221,24 +406,92 @@ def analyze(candles):
 
         "ema20": round(
             ema20,
-            4
+            8
         ),
 
         "ema50": round(
             ema50,
-            4
+            8
         ),
 
         "support": round(
             support,
-            4
+            8
         ),
 
         "resistance": round(
             resistance,
-            4
+            8
         ),
 
-        "message": message
+        "target": target,
+
+        "stop_loss": stop_loss,
+
+
+        "chart": {
+
+            "lines": [
+
+                {
+
+                    "values":
+                        ema20_series,
+
+                    "label":
+                        "EMA 20",
+
+                    "width":
+                        1.5
+
+                },
+
+                {
+
+                    "values":
+                        ema50_series,
+
+                    "label":
+                        "EMA 50",
+
+                    "width":
+                        1.5
+
+                }
+
+            ],
+
+
+            "levels": [
+
+                {
+
+                    "price":
+                        support,
+
+                    "label":
+                        "Support",
+
+                    "style":
+                        "--"
+
+                },
+
+                {
+
+                    "price":
+                        resistance,
+
+                    "label":
+                        "Resistance",
+
+                    "style":
+                        "--"
+
+                }
+
+            ]
+
+        }
 
     }
