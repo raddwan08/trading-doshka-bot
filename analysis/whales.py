@@ -1,108 +1,325 @@
 import numpy as np
 
 
-def analyze(candles):
+SCHOOL_NAME = "🐋 تحليل الحيتان"
 
-    if len(candles) < 30:
+REQUIRES_CANDLES = True
+
+
+# =====================================
+# MAIN ANALYSIS
+# =====================================
+
+def analyze(
+    candles
+):
+
+    if not candles or len(candles) < 30:
 
         return {
+
+            "school": "Whales",
+
             "signal": "WAIT",
-            "message": "بيانات غير كافية لتحليل الحيتان"
+
+            "message": (
+                "بيانات غير كافية "
+                "لتحليل نشاط الحيتان."
+            )
+
         }
 
 
-
     closes = np.array(
+
         [
-            float(x["close"])
-            for x in candles
+
+            float(
+                candle["close"]
+            )
+
+            for candle in candles
+
         ]
+
+    )
+
+
+    opens = np.array(
+
+        [
+
+            float(
+                candle["open"]
+            )
+
+            for candle in candles
+
+        ]
+
+    )
+
+
+    highs = np.array(
+
+        [
+
+            float(
+                candle["high"]
+            )
+
+            for candle in candles
+
+        ]
+
+    )
+
+
+    lows = np.array(
+
+        [
+
+            float(
+                candle["low"]
+            )
+
+            for candle in candles
+
+        ]
+
     )
 
 
     volumes = np.array(
+
         [
-            float(x["volume"])
-            for x in candles
+
+            float(
+                candle.get(
+                    "volume",
+                    0
+                )
+            )
+
+            for candle in candles
+
         ]
+
     )
 
 
-
-    current_volume = volumes[-1]
-
+    # =================================
+    # AVERAGE VOLUME
+    # =================================
 
     average_volume = np.mean(
-        volumes[-30:]
+
+        volumes[-20:-1]
+
     )
 
 
-    volume_ratio = (
-        current_volume /
-        average_volume
-        if average_volume > 0
-        else 1
+    current_volume = (
+        volumes[-1]
     )
 
 
+    if average_volume <= 0:
 
-    price_change = (
-        (
-            closes[-1]
-            -
-            closes[-10]
+        volume_ratio = 0
+
+    else:
+
+        volume_ratio = (
+
+            current_volume /
+            average_volume
+
         )
-        /
-        closes[-10]
-    ) * 100
 
 
+    # =================================
+    # FIND WHALE CANDLES
+    # =================================
+
+    whale_points = []
 
 
-    if volume_ratio >= 3 and price_change > 2:
+    whale_indices = []
 
-        signal = "STRONG_BUY"
+
+    for index in range(
+        len(volumes)
+    ):
+
+
+        recent_start = max(
+
+            0,
+
+            index - 20
+
+        )
+
+
+        recent_volumes = (
+
+            volumes[
+                recent_start:index
+            ]
+
+        )
+
+
+        if len(
+            recent_volumes
+        ) < 5:
+
+            continue
+
+
+        avg = np.mean(
+            recent_volumes
+        )
+
+
+        if avg <= 0:
+
+            continue
+
+
+        ratio = (
+
+            volumes[index] /
+            avg
+
+        )
+
+
+        if ratio >= 2:
+
+
+            price = closes[index]
+
+
+            whale_indices.append(
+                index
+            )
+
+
+            whale_points.append(
+
+                {
+
+                    "index":
+                        index,
+
+                    "price":
+                        float(price),
+
+                    "label":
+                        f"🐋 {round(ratio, 1)}x"
+
+                }
+
+            )
+
+
+    # =================================
+    # DIRECTION
+    # =================================
+
+    current_close = (
+        closes[-1]
+    )
+
+
+    current_open = (
+        opens[-1]
+    )
+
+
+    recent_low = min(
+        lows[-20:]
+    )
+
+
+    recent_high = max(
+        highs[-20:]
+    )
+
+
+    support = recent_low
+
+    resistance = recent_high
+
+
+    if (
+
+        volume_ratio >= 1.5
+
+        and
+
+        current_close >
+        current_open
+
+    ):
+
+
+        signal = "BUY"
+
 
         message = (
-            "🐋 نشاط حيتان شرائي\n\n"
-            "حجم التداول أعلى من المتوسط "
-            "بشكل كبير\n"
-            "مع ارتفاع السعر"
+
+            "🐋 تم رصد نشاط شرائي "
+            "مرتفع مقارنة بمتوسط الحجم.\n"
+            "📈 الحجم والسعر يدعمان "
+            "الضغط الشرائي."
+
         )
 
 
+    elif (
 
-    elif volume_ratio >= 3 and price_change < -2:
+        volume_ratio >= 1.5
 
-        signal = "STRONG_SELL"
+        and
+
+        current_close <
+        current_open
+
+    ):
+
+
+        signal = "SELL"
+
 
         message = (
-            "🐋 خروج حيتان\n\n"
-            "ضغط بيع كبير تم اكتشافه"
+
+            "🐋 تم رصد نشاط بيعي "
+            "مرتفع مقارنة بمتوسط الحجم.\n"
+            "📉 هناك ضغط بيع واضح."
+
         )
-
-
-
-    elif volume_ratio >= 1.8:
-
-        signal = "WATCH"
-
-        message = (
-            "👀 نشاط غير طبيعي في الحجم\n"
-            "مراقبة الحركة القادمة"
-        )
-
 
 
     else:
 
+
         signal = "WAIT"
 
+
         message = (
-            "لا يوجد نشاط حيتان واضح"
+
+            "🐋 لا يوجد حالياً نشاط "
+            "استثنائي قوي للحيتان."
+
         )
 
 
+    # =================================
+    # RESULT
+    # =================================
 
     return {
 
@@ -110,16 +327,69 @@ def analyze(candles):
 
         "signal": signal,
 
+        "message": message,
+
         "volume_ratio": round(
-            volume_ratio,
+
+            float(volume_ratio),
+
             2
+
         ),
 
-        "price_change": round(
-            price_change,
-            2
+        "support": round(
+
+            float(support),
+
+            8
+
         ),
 
-        "message": message
+        "resistance": round(
+
+            float(resistance),
+
+            8
+
+        ),
+
+
+        "chart": {
+
+            "points":
+                whale_points,
+
+
+            "levels": [
+
+                {
+
+                    "price":
+                        support,
+
+                    "label":
+                        "Whale Support",
+
+                    "style":
+                        "--"
+
+                },
+
+                {
+
+                    "price":
+                        resistance,
+
+                    "label":
+                        "Whale Resistance",
+
+                    "style":
+                        "--"
+
+                }
+
+            ]
+
+        }
 
     }
