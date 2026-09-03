@@ -349,24 +349,35 @@ async def futures_menu(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-
     query = update.callback_query
-
 
     await query.answer()
 
+    user_id = update.effective_user.id
 
-
-    user_id = (
-        update.effective_user.id
+    admin_id = int(
+        os.getenv("ADMIN_ID")
     )
 
 
+    # المؤسس لديه صلاحية مجانية دائماً
+    if user_id == admin_id:
 
+        await query.edit_message_text(
+
+            "👑 Founder Access\n\n"
+            "🚀 Futures Trading\n\n"
+            "✅ لديك وصول مجاني كمؤسس البوت."
+
+        )
+
+        return
+
+
+    # المستخدمون الآخرون يحتاجون اشتراكاً
     if not db.check_subscription(
         user_id
     ):
-
 
         await query.edit_message_text(
 
@@ -378,41 +389,11 @@ async def futures_menu(
         return
 
 
-
     await query.edit_message_text(
 
         "🚀 Futures Trading\n\n"
         "✅ الاشتراك فعال.\n\n"
         "سيتم إضافة إشارات Futures هنا."
-
-    )
-
-
-
-# =========================
-# PRICES
-# =========================
-
-
-async def prices_menu(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-
-    query = update.callback_query
-
-
-    await query.answer()
-
-
-
-    await query.edit_message_text(
-
-        "💰 الأسعار\n\n"
-        "/price BTC\n"
-        "/price ETH\n"
-        "/price SOL"
 
     )
 
