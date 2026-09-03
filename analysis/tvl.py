@@ -87,24 +87,37 @@ def analyze(data):
 
     return {
 
-        "school": "TVL",
+    "school": "TVL",
 
-        "signal": signal,
+    "signal": signal,
 
-        "message": message,
+    "message": message,
 
-        "tvl": tvl_value,
+    "tvl": tvl_value,
 
-        "tvl_change_30d": change,
+    "tvl_change_30d": change,
 
-        "chart": chart_data
+    "chart": {
 
-    }        data.get(
-            "tvl_change_30d",
-            0
-        )
+        "values": {
 
-    )
+            "TVL":
+                tvl_value,
+
+            "30d Change":
+                change
+
+        },
+
+        "history":
+            data.get(
+                "history",
+                []
+            )
+
+    }
+
+}
 
 
     # =================================
