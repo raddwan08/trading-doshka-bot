@@ -398,6 +398,30 @@ async def futures_menu(
     )
 
 
+# =========================
+# PRICES
+# =========================
+
+
+async def prices_menu(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    await query.edit_message_text(
+
+        "💰 الأسعار\n\n"
+        "/price BTC\n"
+        "/price ETH\n"
+        "/price SOL"
+
+    )
+
+
 
 # =========================
 # ALERTS
