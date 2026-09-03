@@ -400,16 +400,18 @@ class AnalysisHandler:
 
 
                     chart_path = (
-                        self.chart_service.create_chart(
+    self.chart_service.create_chart(
 
-                            symbol=symbol,
+        symbol=symbol,
 
-                            candles=candles,
+        candles=candles,
 
-                            school=school
+        school=school,
 
-                        )
-                    )
+        result=result
+
+    )
+)
 
 
                 except Exception as e:
