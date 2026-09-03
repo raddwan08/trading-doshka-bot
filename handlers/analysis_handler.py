@@ -10,6 +10,8 @@ from utils.keyboards import (
     main_menu_keyboard
 )
 
+from services.chart_service import ChartService
+
 from analysis import (
     wyckoff,
     harmonic,
