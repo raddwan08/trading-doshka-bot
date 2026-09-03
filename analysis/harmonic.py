@@ -1,166 +1,591 @@
-import math
+import numpy as np
 
 
-def fibonacci_ratio(a, b, c):
-    """
-    حساب نسبة التصحيح
-    """
-    if b == a:
+SCHOOL_NAME = "🦋 تحليل هارمونيك"
+
+REQUIRES_CANDLES = True
+
+
+# =====================================
+# FIND PIVOTS
+# =====================================
+
+def find_pivots(
+    highs,
+    lows,
+    window=3
+):
+
+    pivots = []
+
+
+    for i in range(
+
+        window,
+
+        len(highs) - window
+
+    ):
+
+
+        high_section = (
+
+            highs[
+                i - window:
+                i + window + 1
+            ]
+
+        )
+
+
+        low_section = (
+
+            lows[
+                i - window:
+                i + window + 1
+            ]
+
+        )
+
+
+        # Pivot High
+
+        if highs[i] == max(
+            high_section
+        ):
+
+            pivots.append(
+
+                {
+
+                    "index":
+                        i,
+
+                    "price":
+                        float(
+                            highs[i]
+                        ),
+
+                    "type":
+                        "HIGH"
+
+                }
+
+            )
+
+
+        # Pivot Low
+
+        elif lows[i] == min(
+            low_section
+        ):
+
+            pivots.append(
+
+                {
+
+                    "index":
+                        i,
+
+                    "price":
+                        float(
+                            lows[i]
+                        ),
+
+                    "type":
+                        "LOW"
+
+                }
+
+            )
+
+
+    return pivots
+
+
+# =====================================
+# CHECK HARMONIC RATIOS
+# =====================================
+
+def calculate_ratio(
+    a,
+    b
+):
+
+    if a == 0:
+
         return 0
 
-    return abs((c - b) / (b - a))
+
+    return abs(b / a)
 
 
+# =====================================
+# MAIN ANALYSIS
+# =====================================
 
-def analyze(candles):
+def analyze(
+    candles
+):
 
-    if len(candles) < 30:
+    if not candles or len(candles) < 60:
 
         return {
+
+            "school": "Harmonic",
+
             "signal": "WAIT",
-            "message": "بيانات غير كافية لنموذج هارمونيك"
+
+            "message": (
+                "بيانات غير كافية "
+                "للبحث عن نموذج هارمونيك."
+            )
+
         }
 
 
-    highs = [
-        float(x["high"])
-        for x in candles
-    ]
+    highs = np.array(
 
-    lows = [
-        float(x["low"])
-        for x in candles
-    ]
+        [
 
+            float(
+                candle["high"]
+            )
 
-    # آخر أربع نقاط سعرية
-    X = lows[-30]
-    A = highs[-20]
-    B = lows[-10]
-    C = highs[-5]
-    D = lows[-1]
+            for candle in candles
 
+        ]
 
-    AB_XA = fibonacci_ratio(
-        X,
-        A,
-        B
     )
 
 
-    BC_AB = fibonacci_ratio(
-        A,
-        B,
-        C
+    lows = np.array(
+
+        [
+
+            float(
+                candle["low"]
+            )
+
+            for candle in candles
+
+        ]
+
     )
 
 
-    CD_BC = fibonacci_ratio(
-        B,
-        C,
-        D
+    closes = np.array(
+
+        [
+
+            float(
+                candle["close"]
+            )
+
+            for candle in candles
+
+        ]
+
     )
 
 
+    pivots = find_pivots(
 
-    pattern = None
+        highs,
+
+        lows
+
+    )
+
+
+    # =================================
+    # NEED 5 POINTS
+    # =================================
+
+    if len(pivots) < 5:
+
+
+        return {
+
+            "school": "Harmonic",
+
+            "signal": "WAIT",
+
+            "pattern": "No Pattern",
+
+            "message": (
+                "لم يتم العثور على "
+                "نموذج هارمونيك واضح."
+            ),
+
+            "chart": {
+
+                "points":
+                    []
+
+            }
+
+        }
+
+
+    # =================================
+    # LAST 5 PIVOTS
+    # =================================
+
+    points = pivots[-5:]
+
+
+    x_point = points[0]
+
+    a_point = points[1]
+
+    b_point = points[2]
+
+    c_point = points[3]
+
+    d_point = points[4]
+
+
+    xa = abs(
+
+        a_point["price"] -
+        x_point["price"]
+
+    )
+
+
+    ab = abs(
+
+        b_point["price"] -
+        a_point["price"]
+
+    )
+
+
+    bc = abs(
+
+        c_point["price"] -
+        b_point["price"]
+
+    )
+
+
+    cd = abs(
+
+        d_point["price"] -
+        c_point["price"]
+
+    )
+
+
+    ab_ratio = calculate_ratio(
+        xa,
+        ab
+    )
+
+
+    bc_ratio = calculate_ratio(
+        ab,
+        bc
+    )
+
+
+    cd_ratio = calculate_ratio(
+        bc,
+        cd
+    )
+
+
+    pattern = (
+        "Potential Harmonic"
+    )
+
+
     signal = "WAIT"
 
 
-    # Gartley
+    message = (
+
+        "🦋 تم العثور على نقاط Pivot "
+        "يمكن استخدامها لتحليل "
+        "نموذج هارمونيك."
+
+    )
+
+
+    # =================================
+    # GARTLEY-LIKE
+    # =================================
+
     if (
-        0.55 <= AB_XA <= 0.65
+
+        0.55 <= ab_ratio <= 0.70
+
         and
-        0.35 <= BC_AB <= 0.90
+
+        0.38 <= bc_ratio <= 0.95
+
         and
-        1.20 <= CD_BC <= 1.70
+
+        1.20 <= cd_ratio <= 1.80
+
     ):
+
 
         pattern = "Gartley"
-        signal = "BUY"
 
 
+        # إذا كانت D منخفضة
+        if d_point["price"] < c_point["price"]:
 
-    # Butterfly
+
+            signal = "BUY"
+
+
+            message = (
+
+                "🦋 تم اكتشاف نموذج "
+                "Gartley محتمل.\n"
+                "📈 منطقة D قد تمثل "
+                "منطقة انعكاس صعودي."
+
+            )
+
+
+        else:
+
+
+            signal = "SELL"
+
+
+            message = (
+
+                "🦋 تم اكتشاف نموذج "
+                "Gartley محتمل.\n"
+                "📉 منطقة D قد تمثل "
+                "منطقة انعكاس هبوطي."
+
+            )
+
+
+    # =================================
+    # BUTTERFLY-LIKE
+    # =================================
+
     elif (
-        0.75 <= AB_XA <= 0.85
+
+        0.70 <= ab_ratio <= 0.85
+
         and
-        1.50 <= CD_BC <= 2.00
+
+        0.38 <= bc_ratio <= 0.95
+
+        and
+
+        1.50 <= cd_ratio <= 2.80
+
     ):
+
 
         pattern = "Butterfly"
-        signal = "BUY"
 
 
-
-    # Bat
-    elif (
-        0.35 <= AB_XA <= 0.55
-        and
-        1.50 <= CD_BC <= 2.60
-    ):
-
-        pattern = "Bat"
-        signal = "BUY"
+        if d_point["price"] < c_point["price"]:
 
 
-
-    # Crab
-    elif (
-        0.35 <= AB_XA <= 0.65
-        and
-        CD_BC >= 2.50
-    ):
-
-        pattern = "Crab"
-        signal = "BUY"
+            signal = "BUY"
 
 
+            message = (
 
-    if pattern:
+                "🦋 نموذج Butterfly "
+                "محتمل.\n"
+                "📈 احتمال انعكاس صعودي "
+                "من منطقة D."
 
-        message = (
-            f"🦋 نموذج هارمونيك مكتشف\n\n"
-            f"النموذج: {pattern}\n"
-            f"الإشارة: {signal}\n"
-            f"تم الوصول لمنطقة انعكاس محتملة"
-        )
+            )
 
-    else:
 
-        message = (
-            "🦋 لا يوجد نموذج هارمونيك واضح حالياً\n"
-            "انتظار تشكل نموذج جديد"
-        )
+        else:
 
+
+            signal = "SELL"
+
+
+            message = (
+
+                "🦋 نموذج Butterfly "
+                "محتمل.\n"
+                "📉 احتمال انعكاس هبوطي "
+                "من منطقة D."
+
+            )
+
+
+    # =================================
+    # CONNECTION
+    # =================================
+
+    x_values = [
+
+        x_point["index"],
+
+        a_point["index"],
+
+        b_point["index"],
+
+        c_point["index"],
+
+        d_point["index"]
+
+    ]
+
+
+    y_values = [
+
+        x_point["price"],
+
+        a_point["price"],
+
+        b_point["price"],
+
+        c_point["price"],
+
+        d_point["price"]
+
+    ]
+
+
+    # =================================
+    # CHART POINTS
+    # =================================
+
+    chart_points = [
+
+        {
+
+            "index":
+                x_point["index"],
+
+            "price":
+                x_point["price"],
+
+            "label":
+                "X"
+
+        },
+
+        {
+
+            "index":
+                a_point["index"],
+
+            "price":
+                a_point["price"],
+
+            "label":
+                "A"
+
+        },
+
+        {
+
+            "index":
+                b_point["index"],
+
+            "price":
+                b_point["price"],
+
+            "label":
+                "B"
+
+        },
+
+        {
+
+            "index":
+                c_point["index"],
+
+            "price":
+                c_point["price"],
+
+            "label":
+                "C"
+
+        },
+
+        {
+
+            "index":
+                d_point["index"],
+
+            "price":
+                d_point["price"],
+
+            "label":
+                "D"
+
+        }
+
+    ]
 
 
     return {
 
         "school": "Harmonic",
 
-        "pattern": pattern,
-
         "signal": signal,
+
+        "pattern": pattern,
 
         "message": message,
 
         "ratios": {
 
-            "AB_XA": round(
-                AB_XA,
-                2
-            ),
+            "AB":
+                round(
+                    ab_ratio,
+                    3
+                ),
 
-            "BC_AB": round(
-                BC_AB,
-                2
-            ),
+            "BC":
+                round(
+                    bc_ratio,
+                    3
+                ),
 
-            "CD_BC": round(
-                CD_BC,
-                2
-            )
+            "CD":
+                round(
+                    cd_ratio,
+                    3
+                )
+
+        },
+
+
+        "chart": {
+
+            "connections": [
+
+                {
+
+                    "x":
+                        x_values,
+
+                    "y":
+                        y_values,
+
+                    "label":
+                        pattern
+
+                }
+
+            ],
+
+
+            "points":
+                chart_points
+
         }
 
     }
