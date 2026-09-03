@@ -29,7 +29,7 @@ from handlers.analysis_handler import (
 from services.crypto_api import CryptoAPI
 
 from services.payment import PaymentService
-
+from services.futures_service import FuturesService
 
 from database.db import Database
 
@@ -95,6 +95,18 @@ db = Database()
 
 
 crypto_api = CryptoAPI()
+
+=========================
+# Futures Service
+# =========================
+
+futures_service = FuturesService(
+
+    db=db,
+
+    crypto_api=crypto_api
+
+)
 
 
 
