@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 import mplfinance as mpf
 
@@ -8,40 +9,73 @@ class ChartService:
     def create_chart(
         self,
         symbol,
-        candles
+        candles,
+        school
     ):
 
+        data = []
+
+
+        for candle in candles:
+
+            data.append({
+
+                "time":
+                    pd.to_datetime(
+                        candle["time"],
+                        unit="ms"
+                    ),
+
+                "Open":
+                    float(
+                        candle["open"]
+                    ),
+
+                "High":
+                    float(
+                        candle["high"]
+                    ),
+
+                "Low":
+                    float(
+                        candle["low"]
+                    ),
+
+                "Close":
+                    float(
+                        candle["close"]
+                    ),
+
+                "Volume":
+                    float(
+                        candle["volume"]
+                    )
+
+            })
+
+
         df = pd.DataFrame(
-            candles
+            data
         )
 
-        df["time"] = pd.to_datetime(
-            df["time"],
-            unit="ms"
-        )
 
         df.set_index(
             "time",
             inplace=True
         )
 
-        df.rename(
-            columns={
-                "open": "Open",
-                "high": "High",
-                "low": "Low",
-                "close": "Close",
-                "volume": "Volume"
-            },
-            inplace=True
-        )
 
         os.makedirs(
             "charts",
             exist_ok=True
         )
 
-        path = f"charts/{symbol}_analysis.png"
+
+        filename = (
+            f"charts/"
+            f"{symbol}_{school}.png"
+        )
+
 
         mpf.plot(
 
@@ -53,10 +87,29 @@ class ChartService:
 
             style="yahoo",
 
-            title=f"{symbol} Analysis",
+            title=(
+                f"{symbol} Analysis - "
+                f"{school.replace('analysis_', '').title()}"
+            ),
 
-            savefig=path
+            ylabel="Price",
+
+            figsize=(
+                12,
+                8
+            ),
+
+            savefig=dict(
+
+                fname=filename,
+
+                dpi=150,
+
+                bbox_inches="tight"
+
+            )
 
         )
 
-        return path
+
+        return filename
